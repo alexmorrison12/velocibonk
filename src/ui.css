@@ -1,5 +1,5 @@
 /* =====================================================================
-   VELOCIBONK — UI
+   VELOCISMASH — UI
    Chunky arcade × Y2K racing HUD. Everything leans forward.
    All classes are prefixed vb-; the #ui root gets .vb-root.
    ===================================================================== */
@@ -21,6 +21,8 @@
   --r-rare: #3DA5FF;
   --r-epic: #B45CFF;
   --r-legendary: #FFB020;
+  --amber: #FFB020;
+  --bone: #F3E6C4;
   --f-disp: "Lilita One", "Arial Black", "Impact", "Haettenschweiler", system-ui, sans-serif;
   --f-ui: "Chakra Petch", "Barlow Condensed", "Roboto Condensed", "Arial Narrow", "Segoe UI", system-ui, sans-serif;
   /* HUD unit scales with the smaller of height / width so ultrawide stays sane */
@@ -856,7 +858,8 @@
 .vb-lu { --lc: var(--sun); }
 .vb-lu[data-kind="chest"] { --lc: var(--volt); }
 .vb-lu[data-kind="shrine"] { --lc: var(--surf); }
-.vb-lu[data-kind="moai"] { --lc: #d9cff7; }
+.vb-lu[data-kind="amber"] { --lc: var(--amber); }
+.vb-lu[data-kind="boon"] { --lc: var(--bone); }
 .vb-lu-rays {
   position: fixed;
   left: 50%;
@@ -984,6 +987,26 @@
   mix-blend-mode: screen;
   animation: vb-holo 2.6s ease-in-out infinite;
 }
+/* FOSSIL BOON: bone-ivory frame, amber glow, warm fossil-bed body — sits outside the rarity ladder */
+.vb-card.vb-boon { --rc: var(--bone); --rg: rgba(255, 176, 32, 0.42); }
+.vb-boon .vb-card-body {
+  background:
+    radial-gradient(ellipse 80% 45% at 50% 24%, rgba(255, 176, 32, 0.42), rgba(255, 176, 32, 0) 70%),
+    repeating-linear-gradient(-28deg, rgba(243, 230, 196, 0.05) 0 0.5em, rgba(243, 230, 196, 0) 0.5em 1.3em),
+    linear-gradient(180deg, #3d2616 0%, #22131a 55%, var(--ink) 100%);
+  box-shadow: 0 0 0 0.22em var(--bone), 0 0 0 0.36em var(--amber), 0 0 1.6em 0.3em rgba(255, 176, 32, 0.45), 0.55em 0.6em 0 0.36em var(--ink);
+}
+.vb-boon:hover .vb-card-body { box-shadow: 0 0 0 0.22em var(--bone), 0 0 0 0.36em var(--amber), 0 0 2em 0.4em rgba(255, 176, 32, 0.6), 0.8em 1.1em 0 0.36em var(--ink); }
+.vb-boon:focus-visible .vb-card-body { box-shadow: 0 0 0 0.22em var(--bone), 0 0 0 0.55em var(--volt), 0 0 2em 0.4em rgba(255, 176, 32, 0.6), 0.8em 1.1em 0 0.55em var(--ink); }
+.vb-boon .vb-card-band { background: linear-gradient(90deg, #fbf3dc, var(--bone) 55%, #e6cf98); }
+.vb-boon .vb-card-rar { color: #8a4b08; }
+.vb-boon .vb-card-kind { padding: 0.12em 0.5em; color: var(--ink); background: var(--amber); border: 0.12em solid var(--ink); border-radius: 0.25em; opacity: 1; }
+.vb-boon .vb-card-ic .vb-burst { color: var(--amber); animation: vb-spin 14s linear infinite; }
+.vb-boon .vb-card-name { color: var(--bone); }
+.vb-boon .vb-card-lv { color: var(--ink); background: var(--amber); }
+.vb-boon .vb-desc-line b { color: var(--amber); }
+.vb-holo-amber { background: linear-gradient(100deg, transparent 40%, rgba(255, 176, 32, 0.34) 48%, rgba(255, 241, 184, 0.3) 51%, transparent 60%); animation-duration: 3.4s; }
+.vb-card.vb-boon.vb-picked .vb-card-body { box-shadow: 0 0 0 0.22em var(--bone), 0 0 0 0.55em var(--amber), 0.8em 1.1em 0 0.55em var(--ink); }
 .vb-cards.vb-has-pick .vb-card:not(.vb-picked) { opacity: 0.3; scale: 0.94; }
 .vb-card.vb-picked .vb-card-body { transform: skewX(-6deg) translateY(-1em) scale(1.05); box-shadow: 0 0 0 0.22em var(--rc), 0 0 0 0.55em var(--volt), 0.8em 1.1em 0 0.55em var(--ink); }
 .vb-lu-foot { display: flex; justify-content: center; animation: vb-rise 0.4s 0.4s ease-out both; }
@@ -1129,7 +1152,7 @@
   display: flex;
   font-family: var(--f-disp);
   font-weight: 400;
-  font-size: clamp(44px, min(15.5cqi, 19vh), 210px);
+  font-size: clamp(40px, min(14.2cqi, 19vh), 210px); /* 11-letter VELOCISMASH + skew overhang fits its column */
   line-height: 0.92;
   letter-spacing: -0.005em;
   white-space: nowrap;
@@ -1146,7 +1169,7 @@
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
-.vb-bonk .vb-lt-f { color: var(--volt); background-image: linear-gradient(180deg, #fff8c4 0 27%, var(--volt) 27% 68%, #f0ae00 68%); }
+.vb-smash .vb-lt-f { color: var(--volt); background-image: linear-gradient(180deg, #fff8c4 0 27%, var(--volt) 27% 68%, #f0ae00 68%); }
 .vb-streaks { position: absolute; left: -14%; right: 30%; top: 4%; bottom: 14%; z-index: -1; pointer-events: none; }
 .vb-streaks i { position: absolute; left: 0; width: 46%; height: 0.42em; opacity: 0; border-radius: 1em; background: linear-gradient(90deg, rgba(255, 122, 26, 0), var(--sun)); animation: vb-streak 1.3s linear infinite; }
 .vb-streaks i:nth-child(1) { top: 10%; }
@@ -1443,6 +1466,8 @@
 .vb-how-callout .m { color: var(--sun); }
 .vb-rules b.pur, .vb-rules em.pur { color: #c99bff; }
 .vb-rules b.win, .vb-rules em.win { color: var(--lime); }
+.vb-rules b.mag, .vb-rules em.mag { color: var(--sun); }
+.vb-rules b.bone, .vb-rules em.bone { color: var(--bone); }
 .vb-how-shr { grid-column: 1 / -1; }
 .vb-how-shr ul { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.6em; padding: 0; list-style: none; }
 .vb-how-shr li { display: grid; grid-template-columns: 2.4em minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; column-gap: 0.5em; padding: 0.45em 0.6em 0.5em 0.45em; background: rgba(20, 15, 46, 0.6); border: 0.13em solid #3b2e7e; border-radius: 0.45em; }
@@ -1537,9 +1562,9 @@
 .vb-victory .vb-over-rays,
 .vb-victory .vb-confetti { display: block; }
 .vb-confetti i { position: absolute; top: -3em; left: var(--x); width: 0.7em; height: 1.1em; background: var(--c); border: 0.12em solid var(--ink); border-radius: 0.15em; rotate: var(--r); opacity: 0; animation: vb-fall var(--s) linear var(--d) infinite; }
-.vb-victory .vb-bonked { color: var(--volt); animation-name: vb-bonk; }
-.vb-bonked.vb-long { font-size: clamp(42px, min(9vh, 8vw), 118px); }
-.vb-bonked.vb-xlong { font-size: clamp(38px, min(8.4vh, 6.8vw), 104px); }
+.vb-victory .vb-smashed { color: var(--volt); animation-name: vb-smash; }
+.vb-smashed.vb-long { font-size: clamp(42px, min(9vh, 8vw), 118px); }
+.vb-smashed.vb-xlong { font-size: clamp(38px, min(8.4vh, 6.8vw), 104px); }
 .vb-ov-isl { display: none; align-items: center; gap: 0.6em 1em; animation: vb-rise 0.4s 0.45s ease-out both; }
 .vb-ov-isl.vb-on { display: flex; flex-wrap: wrap; }
 .vb-ovi-list { display: flex; gap: 0.6em; padding: 0 0 0 0.2em; list-style: none; }
@@ -1587,7 +1612,7 @@
 }
 .vb-over-left { display: flex; flex-direction: column; align-items: flex-start; gap: 0.9em; min-width: 0; }
 .vb-over-mode { padding: 0.25em 0.7em; font-weight: 700; font-size: 0.85em; letter-spacing: 0.3em; color: var(--surf); background: var(--ink); border-radius: 0.2em; transform: skewX(-10deg); }
-.vb-bonked {
+.vb-smashed {
   font-family: var(--f-disp);
   font-weight: 400;
   font-size: clamp(52px, min(12.5vh, 16vw), 156px);
@@ -1596,7 +1621,7 @@
   transform: skewX(-10deg) rotate(-3deg);
   transform-origin: 0 100%;
   --otw: 0.16em;
-  animation: vb-bonk 0.7s cubic-bezier(0.2, 1.6, 0.35, 1) both;
+  animation: vb-smash 0.7s cubic-bezier(0.2, 1.6, 0.35, 1) both;
 }
 .vb-rank { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6em; transform: skewX(-10deg); animation: vb-rise 0.4s 0.4s ease-out both; }
 .vb-rank .k { padding: 0.2em 0.55em; font-weight: 700; font-size: 0.8em; letter-spacing: 0.25em; color: var(--ink); background: var(--volt); border-radius: 0.2em; }
@@ -1730,7 +1755,7 @@
 @keyframes vb-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-0.05em); } }
 @keyframes vb-streak { 0% { opacity: 0; transform: translateX(90%); } 20% { opacity: 0.9; } 100% { opacity: 0; transform: translateX(-80%); } }
 @keyframes vb-wiggle { 0%, 84%, 100% { rotate: 0deg; } 88% { rotate: -2deg; } 92% { rotate: 2deg; } 96% { rotate: -1deg; } }
-@keyframes vb-bonk { 0% { opacity: 0; transform: skewX(-10deg) rotate(-3deg) scale(3) translateY(-0.3em); } 50% { opacity: 1; } 100% { opacity: 1; transform: skewX(-10deg) rotate(-3deg); } }
+@keyframes vb-smash { 0% { opacity: 0; transform: skewX(-10deg) rotate(-3deg) scale(3) translateY(-0.3em); } 50% { opacity: 1; } 100% { opacity: 1; transform: skewX(-10deg) rotate(-3deg); } }
 @keyframes vb-stamp { 0% { opacity: 0; transform: scale(2.6) rotate(-30deg); } 100% { opacity: 1; transform: none; } }
 @keyframes vb-grow { from { transform: scaleX(0); } }
 @keyframes vb-swarm { 50% { opacity: 0.45; } }

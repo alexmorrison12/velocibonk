@@ -77,7 +77,7 @@ export class Leaderboard {
     if (mine) return;
     const ol = this.globalList; ol.textContent = '';
     const rows = this.cache[this.tab];
-    if (this.offline) { ol.append(h('li', 'vb-empty', 'Leaderboard is offline here. Play at alexmorrison12.github.io/velocibonk')); return; }
+    if (this.offline) { ol.append(h('li', 'vb-empty', 'Leaderboard is offline here. Play at alexmorrison12.github.io/velocismash')); return; }
     if (!rows) { ol.append(h('li', 'vb-empty', 'Loading…')); return; }
     if (!rows.length) { ol.append(h('li', 'vb-empty', this.tab === 'today' ? 'No scores today yet. Claim #1.' : 'No scores yet. Claim #1.')); return; }
     const me = (this.getName() || '').toLowerCase();

@@ -4,13 +4,13 @@ import { buildProjectileGeometry, makeToonMaterial } from './models.js';
 import { clamp } from './rng.js';
 
 export const WEAPONS = {
-  bat:     { name: 'The Bonker',    desc: 'A full-circle bat swing that yeets everything nearby.', max: 7 },
+  bat:     { name: 'The Slugger',    desc: 'A full-circle bat swing that yeets everything nearby.', max: 7 },
   pebble:  { name: 'Magic Pebbles', desc: 'Homing pebbles seek the nearest critters.', max: 7 },
   saw:     { name: 'Saw Buddies',   desc: 'Buzzsaws orbit you and shred on contact.', max: 7 },
   zap:     { name: 'Zeus Juice',    desc: 'Lightning that chains between enemies.', max: 7 },
   hotfeet: { name: 'Hot Feet',      desc: 'Leave a trail of fire. Faster = more fire.', max: 7 },
   banana:  { name: 'Bananarang',    desc: 'Piercing boomerang that comes back.', max: 7 },
-  meteor:  { name: 'Sky Bonk',      desc: 'Calls meteors down on the horde.', max: 7 },
+  meteor:  { name: 'Sky Smash',      desc: 'Calls meteors down on the horde.', max: 7 },
   aura:    { name: 'Stink Aura',    desc: 'A damaging cloud that slows enemies.', max: 7 },
   quake:   { name: 'Quake Boots',   desc: 'Landings unleash shockwaves. Higher falls hit harder.', max: 7 },
   lance:   { name: 'Sonic Lance',   desc: 'Piercing beam fired where you run. Scales with speed.', max: 7 },
@@ -110,7 +110,8 @@ export class Arsenal {
   dmg(w, base) {
     const g = this.game;
     const crit = Math.random() < g.stats.crit;
-    return [base * (1 + w.bonus) * g.stats.might * g.momentum * (crit ? 2 : 1), crit];
+    const echo = g.boons?.echo && Math.random() < 0.15 ? 2 : 1; // Fossil Boon: Echo Strike
+    return [base * (1 + w.bonus) * g.stats.might * g.momentum * (crit ? 2 : 1) * echo, crit];
   }
 
   hit(i, w, base, dirX, dirZ, knock) {
@@ -141,7 +142,7 @@ export class Arsenal {
             this.hit(i, w, st.dmg, dx / d, dz / d, st.knock * (0.6 + g.momentum * 0.4) * 2);
             any++;
           }
-          if (any) { g.audio.play('bonk', { pitch: 0.9 + Math.random() * 0.25, volume: Math.min(1, 0.5 + any * 0.05) }); if (any > 6) g.shake(0.15); }
+          if (any) { g.audio.play('smash', { pitch: 0.9 + Math.random() * 0.25, volume: Math.min(1, 0.5 + any * 0.05) }); if (any > 6) g.shake(0.15); }
           break;
         }
         case 'pebble': {

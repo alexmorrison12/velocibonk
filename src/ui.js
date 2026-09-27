@@ -1,4 +1,4 @@
-// VELOCIBONK — UI layer. Vanilla DOM, no framework.
+// VELOCISMASH — UI layer. Vanilla DOM, no framework.
 // Everything lives under the #ui root (class .vb-root); every class is prefixed `vb-`.
 // updateHUD() is called every frame: it caches element refs + last values and only writes on change.
 
@@ -15,6 +15,8 @@ const WOOD = '#EDA65E';
 const GREEN = '#6BE36B';
 const BLUE = '#3DA5FF';
 const PURPLE = '#B45CFF';
+const AMBER = '#FFB020';
+const BONE = '#F3E6C4';
 
 const FONT_HREF =
   'https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Lilita+One&display=swap';
@@ -38,14 +40,15 @@ const MM_BIOME = {
   grave: { sea: ['#233a4f', '#0c1522'], land: [[0, '#2b2f4c'], [0.6, '#34505a'], [0.84, '#3e6a64'], [0.91, '#6a5fae'], [0.955, 'rgba(138,108,255,.45)'], [1, 'rgba(138,108,255,0)']] },
   volcano: { sea: ['#4a1a10', '#1a0705'], land: [[0, '#ffb13a'], [0.1, '#ff5a1f'], [0.2, '#5a2a20'], [0.78, '#2e1a18'], [0.88, '#ff5a1f'], [0.94, 'rgba(255,90,31,.5)'], [1, 'rgba(255,90,31,0)']] },
 };
-const SHRINE_MM = { blessing: '#1AE3FF', moai: '#B7B0C8', totem: '#FF3D8B', greed: '#FFC21A', pylon: '#B45CFF' };
+const SHRINE_MM = { blessing: '#1AE3FF', amber: '#FFB020', totem: '#FF3D8B', greed: '#FFC21A', pylon: '#B45CFF' };
 // display-name fallbacks for starting weapons given as ids
 const WEAPON_NAMES = {
-  bat: 'The Bonker', pebble: 'Magic Pebbles', saw: 'Saw Buddies', zap: 'Zeus Juice', hotfeet: 'Hot Feet', banana: 'Bananarang', meteor: 'Sky Bonk',
+  bat: 'The Slugger', pebble: 'Magic Pebbles', saw: 'Saw Buddies', zap: 'Zeus Juice', hotfeet: 'Hot Feet', banana: 'Bananarang', meteor: 'Sky Smash',
   aura: 'Stink Aura', quake: 'Quake Boots', lance: 'Sonic Lance', frost: 'Frost Nova', blackhole: 'Black Hole',
 };
-const KIND_LABEL = { weapon: 'WEAPON', tome: 'TOME', character: 'RAPTOR', island: 'ISLAND', shrine: 'SHRINE', perk: 'PERK', stat: 'STAT', bonus: 'BONUS' };
-const CAT_ICON = { ISLANDS: 'portal', MOVEMENT: 'zoomies', COMBAT: 'challenge', EXPLORATION: 'quest' };
+// player-facing kind labels (internal kind 'tome' is shown as CHARM; 'stat' cards come from the Amber Obelisk)
+const KIND_LABEL = { weapon: 'WEAPON', tome: 'CHARM', charm: 'CHARM', character: 'RAPTOR', island: 'ISLAND', shrine: 'SHRINE', perk: 'PERK', stat: 'MUTATION', boon: 'BOON', bonus: 'BONUS' };
+const CAT_ICON = { ISLANDS: 'cannon', MOVEMENT: 'zoomies', COMBAT: 'challenge', EXPLORATION: 'quest' };
 const CAT_ORDER = ['ISLANDS', 'MOVEMENT', 'COMBAT', 'EXPLORATION'];
 const DEFAULT_SETTINGS = { master: 0.8, music: 0.6, sfx: 0.8, sensitivity: 1, invertY: false, quality: 'high', showFps: false };
 const SEGS = 24; // momentum meter segments
@@ -217,7 +220,7 @@ const BASE_ICONS = {
       `<rect x="8" y="28" width="38" height="8" rx="3" fill="${SURF}"/><path d="M44 21 L63 32 L44 43 Z" fill="${PAPER}"/>` +
       `<ellipse cx="20" cy="32" rx="3.5" ry="11" stroke="${VOLT}" stroke-width="3"/><ellipse cx="31" cy="32" rx="3" ry="8.5" stroke="${VOLT}" stroke-width="3"/></g>`
   ),
-  // tomes
+  // charms (internal kind 'tome')
   might: svg(
     `<path d="M52 9 L58 3 M55 18 H62 M46 6 L47 1" stroke="${VOLT}" stroke-width="3.5"/><rect x="20" y="44" width="24" height="15" rx="3" fill="${HOT}"/>` +
       `<rect x="11" y="15" width="40" height="31" rx="9" fill="${SUN}"/><path d="M21 15 V27 M31 15 V27 M41 15 V27" stroke-width="3.5"/><path d="M11 31 C19 29 28 31 30 38" stroke-width="3.5"/>`
@@ -313,13 +316,16 @@ const BASE_ICONS = {
       `<path d="M20 11 L26 25 L32 11 Z" fill="#BFF8FF" stroke="none"/><path d="M9 25 H55 M20 11 L26 25 L32 58 L38 25 L44 11 M26 25 L32 11 L38 25" stroke-width="3"/>` +
       `<path d="M14 26 L25 44" stroke="#fff" stroke-width="3"/>`
   ),
-  moai: svg(
-    `<path d="M14 40 C9.5 40 9.5 25 14 25 Z M50 40 C54.5 40 54.5 25 50 25 Z" fill="#9A93B0"/>` +
-      `<path d="M13 61 L15.5 22 C15.5 11 22.5 6 32 6 C41.5 6 48.5 11 48.5 22 L51 61 Z" fill="#AFA8C4"/>` +
-      `<path d="M41 12 C45 15 46.5 19 46.5 24 L48.6 58 H41 Z" fill="#8F88A8" stroke="none"/><path d="M13 61 L15.5 22 C15.5 11 22.5 6 32 6 C41.5 6 48.5 11 48.5 22 L51 61 Z"/>` +
-      `<rect x="20" y="1.5" width="24" height="8" rx="3.5" fill="#D8643E"/>` +
-      `<path d="M17 25.5 C24 20.5 40 20.5 47 25.5" stroke-width="5"/><path d="M19.5 27.5 H29 L28 32.5 H20.5 Z M35 27.5 H44.5 L43.5 32.5 H36 Z" fill="${INK}" stroke-width="2"/>` +
-      `<path d="M30 27 L27 42 C29.5 44.5 34.5 44.5 37 42 L34 27" fill="#8F88A8" stroke-width="3"/><path d="M24 50 C28 47.5 36 47.5 40 50 M26.5 53.5 H37.5" stroke-width="3"/>`
+  // Amber Obelisk: faceted glowing amber crystal with a tiny fossil (ammonite) trapped inside
+  amber: svg(
+    `<circle cx="32" cy="32" r="27" fill="${AMBER}" opacity=".2" stroke="none"/>${line2('M8 18 L13 21.5 M56 18 L51 21.5 M5 34 H11 M59 34 H53', VOLT, 3)}` +
+      `<rect x="14" y="53" width="36" height="8.5" rx="2.5" fill="#7B6A9E"/><path d="M18 57.5 H46" stroke="#5A4A7A" stroke-width="2.5"/>` +
+      `<path d="M21 54 L24 17 L32 3.5 L40 17 L43 54 Z" fill="${AMBER}"/>` +
+      `<path d="M32 3.5 L40 17 L43 54 H32 L32 21 Z" fill="#E8820F" stroke="none"/><path d="M24 17 L32 3.5 V21 Z" fill="#FFE39A" stroke="none"/>` +
+      `<path d="M21 54 L24 17 L32 3.5 L40 17 L43 54 Z"/><path d="M24 17 L32 21 L40 17 M32 21 V27 M32 47 V54" stroke="#9A4E05" stroke-width="2.4"/>` +
+      `<circle cx="32" cy="37" r="7.5" fill="#FFCB5C" stroke="none" opacity=".75"/>` +
+      `<path d="M32.4 37.6 C31 38.2 30 36.8 31 35.8 C32.4 34.6 34.6 35.8 34.4 37.8 C34.2 40.4 30.8 41.4 28.9 39.6 C26.6 37.3 27.8 33.2 31.2 32.6 C35 32 38 34.8 37.8 38.4" stroke="#6B3405" stroke-width="2"/>` +
+      `<path d="M27 24 L25.3 44" stroke="#fff" stroke-width="2.6"/><path d="M36.5 8.5 L38.5 12" stroke="#fff" stroke-width="2"/>`
   ),
   totem: svg(
     `<path d="M24 16 L2 9 L7 18 L2 24.5 L22 26 Z M40 16 L62 9 L57 18 L62 24.5 L42 26 Z" fill="${SUN}"/>` +
@@ -443,15 +449,43 @@ const BASE_ICONS = {
       `<path d="${ngon(32, 27, 23, 6)}" fill="${PURPLE}"/><path d="${ngon(32, 27, 15.5, 6)}" fill="#8E3FE0" stroke="none"/>` +
       line2('M22.5 31 L32 21.5 L41.5 31 M22.5 39 L32 29.5 L41.5 39', VOLT, 4)
   ),
+  // THE LOST WORLD: fossil gate (T-rex skull), launch cannon, meteor crater
+  fossil: svg(
+    `<path d="M12 40.5 L50 38.5 C55 38.5 56.5 43 52.5 45.8 C44.5 50.8 29 52.8 19 50.8 C13.5 49.8 11 46 12 40.5 Z" fill="#D9C697"/>` +
+      `<path d="M21 41 L23.2 36.4 L25.4 40.8 Z M29.5 40.6 L31.7 36 L33.9 40.3 Z M38 40 L40.2 35.6 L42.4 39.7 Z" fill="#fff" stroke-width="2"/>` +
+      `<path d="M5 33 C4 21 13 11.5 27 10.5 C39 9.5 51 13.5 57 20.5 C60.5 24.5 60.5 30 56.5 32.5 C47 35.2 33 36.6 20 37.6 C13 38.1 6 37.6 5 33 Z" fill="${BONE}"/>` +
+      `<path d="M9 31 C8.5 24 11.5 18.5 17 15" stroke="#CDB98A" stroke-width="3"/><path d="M14 20 L17.5 23.5 L15.5 27" stroke="#B8A273" stroke-width="2"/>` +
+      `<path d="M25 37.4 L27.2 42.6 L29.4 37.1 Z M33.5 36.8 L35.7 41.8 L37.9 36.4 Z M42 35.9 L44.2 40.6 L46.4 35.3 Z M50 34.4 L51.9 38.6 L53.8 33.6 Z" fill="#fff" stroke-width="2"/>` +
+      `<path d="M35 21.5 C39 18 46 18.5 48.5 22 C45.5 26 38.5 26.5 35 21.5 Z" fill="#5A4636" stroke-width="2.5"/><ellipse cx="54.5" cy="22.5" rx="2" ry="1.5" fill="#5A4636" stroke="none"/>` +
+      `<ellipse cx="24" cy="23" rx="6.8" ry="6.3" fill="${INK}" stroke-width="2.5"/><circle cx="24.4" cy="23.6" r="3.6" fill="${AMBER}" stroke="none"/><circle cx="25.6" cy="22.2" r="1.4" fill="${VOLT}" stroke="none"/>`
+  ),
+  cannon: svg(
+    `${line2('M54 3 L56 8 M61 11 L57 13', VOLT, 3)}` +
+      `<g transform="rotate(-32 30 38)"><path d="M12 34 C7 33 4.5 29 5.5 24.5" stroke-width="3.5"/>` +
+      `<rect x="11" y="28" width="40" height="19" rx="8" fill="${SURF}"/><rect x="45" y="24.5" width="11" height="26" rx="3.5" fill="${BLUE}"/>` +
+      `<rect x="23" y="27" width="6" height="21" rx="1.5" fill="${VOLT}" stroke-width="3"/><path d="M15 33 H42" stroke="#fff" stroke-width="3"/>` +
+      `<ellipse cx="56" cy="37.5" rx="2.2" ry="8" fill="${INK}" stroke="none"/><path d="${starPath(5.5, 22.5, 5.5, 2.4, 6)}" fill="${VOLT}" stroke-width="2"/></g>` +
+      `<circle cx="31" cy="48" r="11" fill="${WOOD}"/><path d="M31 38 V58 M21 48 H41 M24 41 L38 55 M38 41 L24 55" stroke="#B8702E" stroke-width="2.5"/>` +
+      `<circle cx="31" cy="48" r="11"/><circle cx="31" cy="48" r="3.8" fill="${HOT}" stroke-width="2.5"/><path d="M4 60 H60" stroke-width="3.5"/>`
+  ),
+  crater: svg(
+    `${line2('M13 17 L17.5 23 M51 17 L46.5 23 M32 5 V13', VOLT, 3)}` +
+      `<ellipse cx="32" cy="48" rx="29" ry="12" fill="#8A6A52"/><path d="M7 45 C12 40.5 19 38.5 26 38" stroke="#B89478" stroke-width="3"/>` +
+      `<ellipse cx="32" cy="47" rx="20" ry="7" fill="#3A1812"/><ellipse cx="32" cy="47.5" rx="15" ry="4.4" fill="${SUN}" stroke="none"/>` +
+      `<path d="M20.5 43 C18.5 33 24.5 25 33 25 C41.5 25 46 33 43.5 42 C41 48.5 23 49.5 20.5 43 Z" fill="#7B6A9E"/>` +
+      `<path d="M25.5 34 L29.5 37.5 L27.5 42.5 M35 30 L37 35 L41 36.5" stroke="${VOLT}" stroke-width="2.5"/><circle cx="28" cy="30" r="2.2" fill="#9D8CC0" stroke="none"/>` +
+      `<circle cx="9" cy="37" r="2.6" fill="#8A6A52" stroke-width="2.5"/><circle cx="56" cy="38.5" r="2" fill="#8A6A52" stroke-width="2.5"/>`
+  ),
   check: svg(`<circle cx="32" cy="32" r="26" fill="${LIME}"/><path d="M18.5 33 L28 42.5 L46 22" stroke-width="9"/><path d="M18.5 33 L28 42.5 L46 22" stroke="#fff" stroke-width="3.5"/>`),
 };
 // plain island-name aliases ('frost' stays the weapon; use 'island-frost' for the island)
 for (const b of ['tropical', 'desert', 'grave', 'volcano']) BASE_ICONS[b] = BASE_ICONS['island-' + b];
-// stat / reward id aliases so Moai stat cards etc. get a sensible icon
+// stat / reward id aliases so Amber Obelisk stat cards etc. get a sensible icon
 const ICON_ALIAS = {
   damage: 'might', dmg: 'might', attackspeed: 'haste', cooldown: 'haste', projectiles: 'multishot', area: 'size', speed: 'zoomies',
   movespeed: 'zoomies', pickup: 'magnet', hp: 'vitality', maxhp: 'vitality', health: 'vitality', heal: 'heal', crit: 'crit', xp: 'wisdom',
-  jump: 'springs', gold: 'coin', greedidol: 'greed', shrine: 'blessing', island: 'portal', boss: 'skull', moaiblessing: 'moai',
+  jump: 'springs', gold: 'coin', greedidol: 'greed', shrine: 'blessing', island: 'portal', boss: 'skull', obelisk: 'amber', amberobelisk: 'amber', mutation: 'amber', ambermutation: 'amber',
+  meteorcrater: 'crater', launchcannon: 'cannon', fossilgate: 'fossil', fossilecho: 'fossil', fossilboon: 'fossil', boon: 'fossil', charm: 'wisdom',
 };
 const iconKey = (id) => {
   if (typeof id !== 'string') return 'star';
@@ -499,6 +533,9 @@ function rewardIcon(rw) {
       return has(id) ? id : 'rex';
     case 'weapon':
       return has(id) ? id : 'bat';
+    case 'boon':
+      return has(id) ? id : 'fossil';
+    case 'charm':
     case 'tome':
       return has(id) ? id : iconKey(id) !== 'star' ? iconKey(id) : 'wisdom';
   }
@@ -558,19 +595,19 @@ function descLine(text) {
 
 /* ----------------------------------------------------------------- template */
 
-const LOGO = 'VELOCIBONK'
+const LOGO = 'VELOCISMASH'
   .split('')
-  .map((ch, i) => `<span class="vb-lt${i > 5 ? ' vb-bonk' : ''}" style="--i:${i}"><span class="vb-lt-bob vb-ot" data-t="${ch}"><span class="vb-lt-f">${ch}</span></span></span>`)
+  .map((ch, i) => `<span class="vb-lt${i > 5 ? ' vb-smash' : ''}" style="--i:${i}"><span class="vb-lt-bob vb-ot" data-t="${ch}"><span class="vb-lt-f">${ch}</span></span></span>`)
   .join('');
 const CHEV = `<svg viewBox="0 0 40 24" aria-hidden="true" focusable="false"><path d="M4 3 L15 12 L4 21 M20 3 L31 12 L20 21" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 const HOW_SHRINES = [
   ['coin', 'CHEST', 'Costs gold — walk in to open'],
-  ['blessing', 'BLESSING', 'Stand in it for a free tome'],
-  ['moai', 'MOAI', 'Pick a raw stat. Never caps'],
-  ['totem', 'TOTEM', 'Timed kill trial → epic loot'],
+  ['blessing', 'BLESSING', 'Stand in it for a free charm'],
+  ['amber', 'AMBER OBELISK', 'Mutation: a raw stat that never caps'],
+  ['totem', 'CHALLENGE TOTEM', 'Timed kill trial → epic loot'],
   ['greed', 'GREED IDOL', 'More gold & XP, tougher foes'],
-  ['pylon', 'PYLON', 'Pulls in every gem'],
+  ['pylon', 'MAGNET PYLON', 'Pulls in every gem'],
 ]
   .map(([ic, k, t]) => `<li><span class="vb-how-ic">${BASE_ICONS[ic]}</span><b>${k}</b><span>${t.replace('&', '&amp;')}</span></li>`)
   .join('');
@@ -582,7 +619,7 @@ const HOWTO = `
       <div><dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Move</dd></div>
       <div><dt><kbd class="w">MOUSE</kbd></dt><dd>Look — click to lock the cursor</dd></div>
       <div><dt><kbd class="w">SPACE</kbd></dt><dd>Jump / double jump — hold to auto-hop</dd></div>
-      <div><dt><kbd class="w">SHIFT</kbd></dt><dd>Slide on the ground · <b>SLAM</b> when airborne</dd></div>
+      <div><dt><kbd class="w">SHIFT</kbd></dt><dd>Slide · <b>SLAM</b> in the air (for crowds, not bosses)</dd></div>
       <div><dt><kbd class="w">ESC</kbd></dt><dd>Pause · weapons fire on their own</dd></div>
     </dl>
   </section>
@@ -599,9 +636,10 @@ const HOWTO = `
     <h3>ISLAND RUN</h3>
     <ul class="vb-rules">
       <li><b>8:00</b><span>Every island runs on a countdown</span></li>
-      <li><b class="pur">PORTAL</b><span>The <em class="pur">BOSS PORTAL</em> (minimap) summons the final boss early for bonus score</span></li>
-      <li><b class="hot">0:00</b><span>The boss comes anyway, and the <em>FINAL SWARM</em> hunts you until it dies</span></li>
-      <li><b class="win">EXIT</b><span>Bonk it to open the <em class="win">EXIT PORTAL</em>. A first clear unlocks the next island; runs chain up to 5 islands with rising level caps</span></li>
+      <li><b class="mag">CRATER</b><span>Stand in the <em class="mag">METEOR CRATER</em> (minimap) to summon the boss early for bonus score</span></li>
+      <li><b class="hot">0:00</b><span>The boss lands anyway; the <em>EXTINCTION</em> wave hunts you until it dies</span></li>
+      <li><b class="win">CANNON</b><span>Win, then stand in the <em class="win">LAUNCH CANNON</em> to fire to the next island. First clears unlock it for good</span></li>
+      <li><b class="bone">FOSSIL</b><span>The <em class="bone">FOSSIL GATE</em> wakes a Fossil Echo of the boss. Beat it: Fossil Boon + 2 free chests</span></li>
     </ul>
   </section>
   <section class="vb-how-shr">
@@ -609,7 +647,7 @@ const HOWTO = `
     <ul>${HOW_SHRINES}</ul>
   </section>
   <div class="vb-how-callout"><span class="k">SCORE</span><span>=</span><span>KILLS</span><span>×</span><span class="m">MOMENTUM</span></div>
-  <p class="vb-how-q"><span class="vb-how-ic">${BASE_ICONS.quest}</span><span><b>QUESTS</b> unlock weapons, tomes, raptors and perks. Check the board on the title screen.</span></p>
+  <p class="vb-how-q"><span class="vb-how-ic">${BASE_ICONS.quest}</span><span><b>QUESTS</b> unlock weapons, charms, raptors and perks. Check the board on the title screen.</span></p>
 </div>`;
 
 const TEMPLATE = `
@@ -733,7 +771,7 @@ const TEMPLATE = `
   <div class="vb-over-wrap">
     <div class="vb-over-left">
       <div class="vb-over-mode" data-r="ovMode"></div>
-      <h1 class="vb-bonked vb-ot" data-r="ovHead" data-t="BONKED.">BONKED.</h1>
+      <h1 class="vb-smashed vb-ot" data-r="ovHead" data-t="SMASHED.">SMASHED.</h1>
       <div class="vb-rank"><span class="k">RANK</span><b data-r="ovRank"></b></div>
       <div class="vb-ov-isl" data-r="ovIsl"></div>
       <div class="vb-over-score">
@@ -760,13 +798,13 @@ const TEMPLATE = `
   </div>
 </section>
 
-<section class="vb-screen vb-title" data-r="title" aria-label="VELOCIBONK">
+<section class="vb-screen vb-title" data-r="title" aria-label="VELOCISMASH">
   <div class="vb-title-tint"></div>
   <div class="vb-title-grid">
     <div class="vb-title-main">
       <div class="vb-logo-wrap">
         <div class="vb-streaks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-        <h1 class="vb-logo" aria-label="VELOCIBONK">${LOGO}</h1>
+        <h1 class="vb-logo" aria-label="VELOCISMASH">${LOGO}</h1>
         <div class="vb-tagline"><span>SPEED IS <em>DAMAGE.</em></span></div>
       </div>
       <div class="vb-challenge" data-r="challenge"><span class="vb-challenge-ic">${BASE_ICONS.challenge}</span><span data-r="challengeText"></span></div>
@@ -1543,6 +1581,8 @@ export class UI {
     clearTimeout(this._biT);
     clearTimeout(this._biT2);
     r.biTitle.textContent = String(o.title || 'FINAL BOSS').toUpperCase();
+    const warn = e.querySelector('.vb-bi-warn');
+    if (warn) warn.textContent = String(o.tag || 'FINAL BOSS').toUpperCase();
     const name = String(o.name || 'BOSS').toUpperCase();
     setOT(r.biName, name);
     r.biName.classList.toggle('vb-long', name.length > 11);
@@ -1566,7 +1606,7 @@ export class UI {
     ol.textContent = '';
     const list = Array.isArray(bests) ? bests.slice(0, max) : [];
     if (!list.length) {
-      ol.append(el('li', 'vb-empty', 'No runs yet. Go bonk something.'));
+      ol.append(el('li', 'vb-empty', 'No runs yet. Go smash something.'));
       return;
     }
     let marked = false;
@@ -1792,14 +1832,14 @@ export class UI {
       L.ram = ram;
     }
 
-    // phase line (FINAL SWARM overrides it)
+    // phase line (the EXTINCTION wave after 0:00 overrides it)
     const swarm = !!s.swarm;
-    const ph = swarm ? 'FINAL SWARM — KILL THE BOSS' : s.phase || '';
+    const ph = swarm ? 'EXTINCTION — SMASH THE BOSS' : s.phase || '';
     if (ph !== L.ph || swarm !== L.swarm) {
       r.phase.textContent = ph;
       const mm = /(\d+):(\d\d)/.exec(ph);
       const soon = /BOSS IN/i.test(ph) && mm && +mm[1] * 60 + +mm[2] <= 10;
-      r.phase.className = 'vb-phase' + (swarm ? ' vb-danger vb-swarm' : !ph ? ' vb-empty' : /FIGHT|SWARM|!/i.test(ph) ? ' vb-danger' : soon ? ' vb-soon' : '');
+      r.phase.className = 'vb-phase' + (swarm ? ' vb-danger vb-swarm' : !ph ? ' vb-empty' : /FIGHT|SWARM|EXTINCTION|!/i.test(ph) ? ' vb-danger' : soon ? ' vb-soon' : '');
       if (swarm !== L.swarm) r.hud.classList.toggle('vb-swarming', swarm);
       L.ph = ph;
       L.swarm = swarm;
@@ -2018,8 +2058,12 @@ export class UI {
         ctx.globalAlpha = shr[i].used ? 0.35 : 1;
         ctx.fillStyle = SHRINE_MM[kind] || SURF;
         ctx.beginPath();
-        if (kind === 'moai') {
-          ctx.rect(x - d * 0.62, y - d, d * 1.24, d * 2); // stone head
+        if (kind === 'amber') {
+          ctx.moveTo(x, y - d * 1.3); // obelisk: pointed tip, tapering shaft
+          ctx.lineTo(x + d * 0.5, y - d * 0.6);
+          ctx.lineTo(x + d * 0.62, y + d);
+          ctx.lineTo(x - d * 0.62, y + d);
+          ctx.lineTo(x - d * 0.5, y - d * 0.6);
         } else if (kind === 'totem') {
           ctx.moveTo(x, y - d * 1.1); // upward spike
           ctx.lineTo(x + d, y + d * 0.8);
@@ -2037,7 +2081,10 @@ export class UI {
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
-        if (kind === 'moai' || kind === 'greed') {
+        if (kind === 'amber') {
+          ctx.fillStyle = '#FFF1B8'; // inner glint
+          ctx.fillRect(x - d * 0.28, y - d * 0.45, d * 0.2, d * 1.1);
+        } else if (kind === 'greed') {
           ctx.fillStyle = INK;
           ctx.fillRect(x - d * 0.42, y - d * 0.3, d * 0.3, d * 0.3);
           ctx.fillRect(x + d * 0.12, y - d * 0.3, d * 0.3, d * 0.3);
@@ -2073,7 +2120,9 @@ export class UI {
       ctx.globalAlpha = 1;
     }
 
-    // portals: boss (purple/pink swirl) and exit (cyan/gold); off-range ones clamp to the rim
+    // portals: meteor crater (molten rock, pulses while active), launch cannon (cyan up-arrow, pulses),
+    // fossil gate (bone skull, dim when inactive). 'boss'/'exit' are legacy aliases of meteor/cannon.
+    // Off-range ones clamp to the rim.
     const po = m.portals;
     if (po && po.length) {
       for (let i = 0; i < po.length; i++) {
@@ -2088,34 +2137,86 @@ export class UI {
           x = c + Math.cos(a) * (R - 8 * k);
           y = c + Math.sin(a) * (R - 8 * k);
         }
-        const exit = p.kind === 'exit';
+        const kind = p.kind === 'exit' || p.kind === 'cannon' ? 'cannon' : p.kind === 'fossil' ? 'fossil' : 'meteor';
         const pr = 6.5 * k;
-        if (p.active) {
-          const pulse = REDUCED ? 1 : 1 + 0.3 * (0.5 + 0.5 * Math.sin(now / 180 + i));
-          ctx.fillStyle = exit ? 'rgba(26,227,255,.32)' : 'rgba(180,92,255,.36)';
+        const on = !!p.active;
+        if (on) {
+          const pulse = REDUCED || kind === 'fossil' ? 1 : 1 + 0.3 * (0.5 + 0.5 * Math.sin(now / 180 + i));
+          ctx.fillStyle = kind === 'cannon' ? 'rgba(26,227,255,.36)' : kind === 'fossil' ? 'rgba(255,176,32,.26)' : 'rgba(255,106,26,.42)';
           ctx.beginPath();
-          ctx.arc(x, y, 11 * k * pulse, 0, TAU);
+          ctx.arc(x, y, (kind === 'fossil' ? 9.5 : 11) * k * pulse, 0, TAU);
           ctx.fill();
         }
-        ctx.globalAlpha = p.active ? 1 : 0.6;
+        ctx.globalAlpha = on ? 1 : kind === 'fossil' ? 0.42 : 0.6;
         ctx.lineWidth = 2 * k;
         ctx.strokeStyle = INK;
-        ctx.fillStyle = exit ? SURF : PURPLE;
-        ctx.beginPath();
-        ctx.ellipse(x, y, pr * 0.78, pr, 0, 0, TAU);
-        ctx.fill();
-        ctx.stroke();
-        ctx.lineWidth = 1.6 * k;
-        ctx.strokeStyle = exit ? VOLT : HOT;
-        ctx.beginPath();
-        ctx.ellipse(x, y, pr * 0.46, pr * 0.62, 0, 0, TAU);
-        ctx.stroke();
-        const a0 = REDUCED || !p.active ? 0 : now / 260;
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 1.3 * k;
-        ctx.beginPath();
-        ctx.arc(x, y, pr * 0.3, a0, a0 + 4.2);
-        ctx.stroke();
+        ctx.lineJoin = 'round';
+        if (kind === 'meteor') {
+          // crater rim + molten rock
+          ctx.fillStyle = '#5A2A20';
+          ctx.beginPath();
+          ctx.ellipse(x, y + pr * 0.25, pr * 1.05, pr * 0.72, 0, 0, TAU);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = on ? SUN : '#B8643A';
+          ctx.beginPath();
+          ctx.arc(x, y - pr * 0.08, pr * 0.62, 0, TAU);
+          ctx.fill();
+          ctx.stroke();
+          ctx.strokeStyle = on ? VOLT : '#E0A070';
+          ctx.lineWidth = 1.4 * k;
+          ctx.beginPath();
+          ctx.moveTo(x - pr * 0.3, y - pr * 0.35);
+          ctx.lineTo(x - pr * 0.02, y - pr * 0.08);
+          ctx.lineTo(x - pr * 0.18, y + pr * 0.22);
+          ctx.moveTo(x + pr * 0.12, y - pr * 0.42);
+          ctx.lineTo(x + pr * 0.32, y - pr * 0.12);
+          ctx.stroke();
+        } else if (kind === 'cannon') {
+          ctx.fillStyle = SURF;
+          ctx.beginPath();
+          ctx.arc(x, y, pr, 0, TAU);
+          ctx.fill();
+          ctx.stroke();
+          // chunky up-arrow ("launch")
+          const bob = REDUCED || !on ? 0 : Math.sin(now / 140) * 0.9 * k;
+          ctx.beginPath();
+          ctx.moveTo(x, y - pr * 0.72 + bob);
+          ctx.lineTo(x + pr * 0.58, y - pr * 0.02 + bob);
+          ctx.lineTo(x + pr * 0.24, y - pr * 0.02 + bob);
+          ctx.lineTo(x + pr * 0.24, y + pr * 0.6 + bob);
+          ctx.lineTo(x - pr * 0.24, y + pr * 0.6 + bob);
+          ctx.lineTo(x - pr * 0.24, y - pr * 0.02 + bob);
+          ctx.lineTo(x - pr * 0.58, y - pr * 0.02 + bob);
+          ctx.closePath();
+          ctx.fillStyle = PAPER;
+          ctx.lineWidth = 1.3 * k;
+          ctx.fill();
+          ctx.stroke();
+        } else {
+          // bone-ivory skull with amber eyes
+          ctx.fillStyle = BONE;
+          ctx.beginPath();
+          ctx.arc(x, y - pr * 0.15, pr * 0.82, Math.PI * 0.88, Math.PI * 2.12);
+          ctx.lineTo(x + pr * 0.5, y + pr * 0.85);
+          ctx.lineTo(x - pr * 0.5, y + pr * 0.85);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = on ? AMBER : INK;
+          ctx.beginPath();
+          ctx.arc(x - pr * 0.33, y - pr * 0.1, pr * 0.22, 0, TAU);
+          ctx.arc(x + pr * 0.33, y - pr * 0.1, pr * 0.22, 0, TAU);
+          ctx.fill();
+          ctx.strokeStyle = INK;
+          ctx.lineWidth = 1.1 * k;
+          ctx.beginPath();
+          ctx.moveTo(x - pr * 0.18, y + pr * 0.52);
+          ctx.lineTo(x - pr * 0.18, y + pr * 0.85);
+          ctx.moveTo(x + pr * 0.18, y + pr * 0.52);
+          ctx.lineTo(x + pr * 0.18, y + pr * 0.85);
+          ctx.stroke();
+        }
         ctx.globalAlpha = 1;
       }
     }
@@ -2205,7 +2306,7 @@ export class UI {
       return;
     }
     A.cur = item;
-    const color = item.color || (/BOSS|SWARM|DANGER|WARNING/i.test(item.text) ? HOT : /RECORD|BEST/i.test(item.text) ? VOLT : SUN);
+    const color = item.color || (/BOSS|SWARM|EXTINCTION|METEOR|DANGER|WARNING/i.test(item.text) ? HOT : /RECORD|BEST/i.test(item.text) ? VOLT : SUN);
     const wrap = el('div', 'vb-ann');
     wrap.style.setProperty('--ac', color);
     const t = el('div', 'vb-ann-t vb-ot');
@@ -2292,7 +2393,8 @@ export class UI {
     const r = this.r;
     const choices = Array.isArray(d.choices) ? d.choices : [];
     const title = String(d.title || 'LEVEL UP!');
-    r.lu.setAttribute('data-kind', /chest/i.test(title) ? 'chest' : /moai/i.test(title) ? 'moai' : /shrine|bless/i.test(title) ? 'shrine' : 'level');
+    const kind = /chest/i.test(title) ? 'chest' : /boon|fossil/i.test(title) ? 'boon' : /amber|mutation/i.test(title) ? 'amber' : /shrine|bless/i.test(title) ? 'shrine' : 'level';
+    r.lu.setAttribute('data-kind', kind);
     setOT(r.luTitle, title);
     r.luSub.textContent = '';
     r.luSub.append(el('span', null, choices.length > 1 ? 'PICK ONE' : 'TAKE IT'));
@@ -2318,23 +2420,26 @@ export class UI {
     wrap.classList.remove('vb-has-pick');
     this._cardEls = choices.map((c, i) => {
       const rar = RARITY[c.rarity] ? c.rarity : 'common';
+      const boon = c.kind === 'boon';
       const kind = KIND_LABEL[c.kind] || String(c.kind || '').toUpperCase();
-      const b = el('button', 'vb-card vb-r-' + rar);
+      const rarText = boon ? 'FOSSIL' : RARITY[rar];
+      const b = el('button', 'vb-card vb-r-' + rar + (boon ? ' vb-boon' : ''));
       b.type = 'button';
       b.style.setProperty('--i', i);
       const desc = Array.isArray(c.desc) ? c.desc : c.desc ? [c.desc] : [];
-      b.setAttribute('aria-label', `${i + 1}: ${c.name}. ${RARITY[rar]} ${kind}. ${c.levelText || ''}. ${desc.join('. ')}`);
+      b.setAttribute('aria-label', `${i + 1}: ${c.name}. ${rarText} ${kind}. ${c.levelText || ''}. ${desc.join('. ')}`);
       const body = el('span', 'vb-card-body');
       const band = el('span', 'vb-card-band');
-      band.append(el('span', 'vb-card-key', String(i + 1)), el('span', 'vb-card-rar', RARITY[rar]), el('span', 'vb-card-kind', kind));
+      band.append(el('span', 'vb-card-key', String(i + 1)), el('span', 'vb-card-rar', rarText), el('span', 'vb-card-kind', kind));
       const ic = el('span', 'vb-card-ic');
-      ic.append(burstNode(), iconNode(iconKey(c.id) !== 'star' ? c.id : c.kind === 'perk' ? 'perk' : c.kind === 'stat' ? 'moai' : c.id));
+      ic.append(burstNode(), iconNode(iconKey(c.id) !== 'star' ? c.id : c.kind === 'perk' ? 'perk' : c.kind === 'stat' ? 'amber' : boon ? 'fossil' : c.id));
       const isNew = /new/i.test(c.levelText || '');
       const lv = el('span', 'vb-card-lv' + (isNew ? ' vb-new' : ''), c.levelText || '');
       const dl = el('span', 'vb-card-desc');
       desc.forEach((line) => dl.append(descLine(line)));
       body.append(band, ic, el('span', 'vb-card-name', c.name || c.id || '???'), lv, dl);
-      if (rar === 'legendary') body.append(el('span', 'vb-holo'));
+      if (boon) body.append(el('span', 'vb-holo vb-holo-amber'));
+      else if (rar === 'legendary') body.append(el('span', 'vb-holo'));
       b.append(body);
       b.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -2459,7 +2564,7 @@ export class UI {
     const vic = !!d.victory;
     r.over.classList.toggle('vb-victory', vic);
     r.over.setAttribute('aria-label', vic ? 'Victory' : 'Game over');
-    const head = String(d.headline || (vic ? 'ISLAND CLEARED!' : 'BONKED.')).toUpperCase();
+    const head = String(d.headline || (vic ? 'ISLAND CLEARED!' : 'SMASHED.')).toUpperCase();
     setOT(r.ovHead, head);
     r.ovHead.classList.toggle('vb-long', head.length > 9);
     r.ovHead.classList.toggle('vb-xlong', head.length > 15);

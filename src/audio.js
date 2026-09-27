@@ -1,4 +1,4 @@
-// VELOCIBONK — procedural audio engine.
+// VELOCISMASH — procedural audio engine.
 // Every sound and all music is synthesized live with the Web Audio API (no files, no libraries).
 //
 //   audio.init()                          call from a user gesture (click/keydown). Idempotent; also resumes.
@@ -250,8 +250,8 @@ const SFX = {
     Nz(V, { at: 0.004, a: 0.004, d: 0.12, v: 0.4, ft: 'lowpass', ff: 3400 * j, ff2: 280, fg: 0.12, q: 3 });
   },
 
-  // THE signature sound: hollow wooden cartoon BONK.
-  bonk(V) {
+  // THE signature sound: hollow wooden cartoon SMASH.
+  smash(V) {
     const j = rand(0.94, 1.06);
     Nz(V, { d: 0.012, v: 0.3, ft: 'highpass', ff: 3200, q: 0.7 });                            // crack transient
     T(V, { f: 620 * j, f2: 150 * j, g: 0.11, a: 0.001, d: 0.26, v: 0.62 });                    // hollow body drop
@@ -1048,7 +1048,7 @@ Object.assign(SFX, {
     Nz(V, { at: 0.04, d: 0.08, v: 0.12, ft: 'bandpass', ff: 1400 * j, q: 1 });
   },
 
-  // Falling coconut: hollow cavity bonk + a little bounce.
+  // Falling coconut: hollow cavity thunk + a little bounce.
   coconut(V) {
     const j = rand(0.92, 1.08);
     Nz(V, { d: 0.01, v: 0.25, ft: 'highpass', ff: 2500 });
@@ -1081,13 +1081,12 @@ Object.assign(SFX, {
     wet(V, 0.3);
   },
 
-  // Moai: grinding stone rumble + a low "ooh" choir.
-  moai(V) {
+  // Amber Obelisk: resonant crystal hum + a low "ooh" choir.
+  amber(V) {
     const t = V.t, k = V.k;
-    const grit = Gn(V, 0.55);
-    lfo(V, grit.gain, 13, 0.45, t, t + 1.32 * k, 'square');
-    Nz(V, { a: 0.1, hold: 0.9, d: 0.3, v: 0.55, ft: 'bandpass', ff: 260, ff2: 180, fg: 1.2, q: 2.5, pink: 1, to: grit });
-    Nz(V, { a: 0.1, hold: 0.8, d: 0.3, v: 0.12, ft: 'bandpass', ff: 1400, q: 3, to: grit });
+    // resonant crystal: a cluster of bright bell partials ringing over the low choir
+    for (const [m, dl] of [[79, 0], [84, 0.08], [88, 0.16], [91, 0.26], [96, 0.38]]) T(V, { type: 'sine', at: dl, f: mtof(m), a: 0.005, hold: 0.05, d: 1.4, v: 0.07 });
+    Nz(V, { a: 0.4, hold: 0.5, d: 0.6, v: 0.08, ft: 'highpass', ff: 5000, q: 0.7 });
     const f1 = Flt(V, 'bandpass', 420, 4), f2 = Flt(V, 'bandpass', 800, 5);
     const vg = Gn(V, 1, f1);
     vg.connect(f2);
@@ -1163,7 +1162,7 @@ Object.assign(SFX, {
     wet(V, 0.2);
   },
 
-  // FINAL SWARM start: dissonant formant choir swelling over a sub-drop, slamming in at ~1 s.
+  // EXTINCTION start: dissonant formant choir swelling over a sub-drop, slamming in at ~1 s.
   swarmstart(V) {
     const t = V.t, k = V.k;
     const f1 = Flt(V, 'bandpass', 650, 3), f2 = Flt(V, 'bandpass', 1100, 4);
@@ -1192,7 +1191,7 @@ Object.assign(SFX, {
 
 // Voice limiting: [min interval ms, max concurrent voices, priority 0 low / 1 normal / 2 high]
 const LIMITS = {
-  hit: [35, 5, 0], crit: [45, 4, 0], kill: [30, 5, 0], bonk: [40, 5, 1], swing: [60, 3, 0],
+  hit: [35, 5, 0], crit: [45, 4, 0], kill: [30, 5, 0], smash: [40, 5, 1], swing: [60, 3, 0],
   shoot: [40, 4, 0], zap: [60, 3, 0], explosion: [70, 4, 1], fire: [60, 3, 0], boomerang: [90, 3, 0],
   saw: [50, 3, 0], lance: [90, 3, 0], gem: [25, 6, 0], coin: [60, 3, 1], heal: [150, 2, 1],
   levelup: [300, 1, 2], pick: [100, 2, 2], legendary: [300, 1, 2], chest: [300, 2, 2], shrine: [400, 1, 2],
@@ -1207,7 +1206,7 @@ const LIMITS = {
   frostnova: [150, 2, 1], snowball: [60, 3, 0], snowimpact: [50, 4, 0], burrow: [400, 1, 1], erupt: [300, 2, 2],
   tornado: [600, 1, 1], scarab: [80, 3, 0], skull: [80, 3, 0], teleport: [200, 2, 1], scythe: [100, 2, 1],
   ghost: [250, 2, 0], breath: [800, 1, 2], dragonroar: [1500, 1, 2], wing: [200, 2, 1], coconut: [80, 3, 1],
-  lava: [90, 3, 0], blackhole: [500, 2, 1], moai: [1000, 1, 2], totem: [800, 1, 2], trialwin: [800, 1, 2],
+  lava: [90, 3, 0], blackhole: [500, 2, 1], amber: [1000, 1, 2], totem: [800, 1, 2], trialwin: [800, 1, 2],
   trialfail: [800, 1, 2], greed: [600, 1, 2], pylon: [300, 1, 1], swarmstart: [2000, 1, 2], heartbeat: [300, 1, 2],
 };
 const GLOBAL_CAP = [24, 40, 60]; // max total active voices before a sound of that priority is dropped
@@ -1217,7 +1216,7 @@ const AUTODUCK = {
   newbest: [0.45, 1.3], death: [0.6, 2.0], shrine: [0.35, 1.4], swarm: [0.3, 1.2], chest: [0.3, 0.8],
   portal: [0.3, 1.5], warp: [0.5, 2.1], portalopen: [0.3, 1.2], quest: [0.25, 0.8], unlock: [0.5, 1.7],
   victory: [0.6, 2.7], truevictory: [0.8, 5.4], bossintro: [0.6, 2.0], phase2: [0.45, 1.4], dragonroar: [0.5, 2.4],
-  moai: [0.3, 1.8], totem: [0.3, 1.1], trialwin: [0.4, 1.2], trialfail: [0.4, 1.1], greed: [0.25, 1.0],
+  amber: [0.3, 1.8], totem: [0.3, 1.1], trialwin: [0.4, 1.2], trialfail: [0.4, 1.1], greed: [0.25, 1.0],
   swarmstart: [0.5, 2.4],
 };
 

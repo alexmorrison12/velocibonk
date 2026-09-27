@@ -1,5 +1,5 @@
-// Level-up cards: weapons + tomes with rarity rolls (luck-weighted), gated by unlocks and by the
-// per-island level caps. Raw STAT boosts never cap: the Moai shrine offers them, and they are the
+// Level-up cards: weapons + charms (internally 'tomes') with rarity rolls (luck-weighted), gated by unlocks and by the
+// per-island level caps. Raw STAT boosts never cap: the Amber Obelisk offers them, and they are the
 // fallback whenever a build is fully maxed, so a shrine or chest is never wasted.
 import { WEAPONS, weaponUpgradeLines } from './weapons.js';
 
@@ -8,23 +8,23 @@ export const RMULT = { common: 1, uncommon: 1.25, rare: 1.55, epic: 2.0, legenda
 const pct = v => `${Math.round(v * 100)}%`;
 
 export const TOMES = {
-  might:     { name: 'Might Tome',       base: 0.14, line: v => `+${pct(v)} damage` },
-  haste:     { name: 'Haste Tome',       base: 0.11, line: v => `+${pct(v)} attack speed` },
-  multishot: { name: 'Multishot Tome',   base: 1, int: true, line: v => `+${v} projectile${v > 1 ? 's' : ''}` },
-  size:      { name: 'Gigantism Tome',   base: 0.13, line: v => `+${pct(v)} area` },
-  zoomies:   { name: 'Zoomies Tome',     base: 0.08, line: v => `+${pct(v)} move speed` },
-  magnet:    { name: 'Magnet Tome',      base: 0.35, line: v => `+${pct(v)} pickup range` },
-  vitality:  { name: 'Vitality Tome',    base: 25, line: v => `+${Math.round(v)} max HP` },
-  regen:     { name: 'Regen Tome',       base: 0.6, line: v => `+${v.toFixed(1)} HP / sec` },
-  crit:      { name: 'Crit Tome',        base: 0.07, line: v => `+${pct(v)} crit chance` },
-  luck:      { name: 'Luck Tome',        base: 0.14, line: v => `+${pct(v)} luck (rarer cards)` },
-  wisdom:    { name: 'Wisdom Tome',      base: 0.14, line: v => `+${pct(v)} XP gain` },
-  springs:   { name: 'Springs Tome',     base: 1, int: true, line: v => `+${v} air jump · +8% jump height` },
-  armor:     { name: 'Armor Tome',       base: 0.06, line: v => `-${pct(v)} damage taken` },
-  momentum:  { name: 'Momentum Tome',    base: 0.2, line: v => `+${pct(v)} speed→damage conversion` },
+  might:     { name: 'Might Charm',       base: 0.14, line: v => `+${pct(v)} damage` },
+  haste:     { name: 'Haste Charm',       base: 0.11, line: v => `+${pct(v)} attack speed` },
+  multishot: { name: 'Multishot Charm',   base: 1, int: true, line: v => `+${v} projectile${v > 1 ? 's' : ''}` },
+  size:      { name: 'Gigantism Charm',   base: 0.13, line: v => `+${pct(v)} area` },
+  zoomies:   { name: 'Zoomies Charm',     base: 0.08, line: v => `+${pct(v)} move speed` },
+  magnet:    { name: 'Magnet Charm',      base: 0.35, line: v => `+${pct(v)} pickup range` },
+  vitality:  { name: 'Vitality Charm',    base: 25, line: v => `+${Math.round(v)} max HP` },
+  regen:     { name: 'Regen Charm',       base: 0.6, line: v => `+${v.toFixed(1)} HP / sec` },
+  crit:      { name: 'Crit Charm',        base: 0.07, line: v => `+${pct(v)} crit chance` },
+  luck:      { name: 'Luck Charm',        base: 0.14, line: v => `+${pct(v)} luck (rarer cards)` },
+  wisdom:    { name: 'Wisdom Charm',      base: 0.14, line: v => `+${pct(v)} XP gain` },
+  springs:   { name: 'Springs Charm',     base: 1, int: true, line: v => `+${v} air jump · +8% jump height` },
+  armor:     { name: 'Armor Charm',       base: 0.06, line: v => `-${pct(v)} damage taken` },
+  momentum:  { name: 'Momentum Charm',    base: 0.2, line: v => `+${pct(v)} speed→damage conversion` },
 };
 
-// raw stat boosts (Moai shrine + maxed-build fallback). `icon` reuses a tome icon.
+// raw stat boosts (Amber Obelisk 'mutations' + maxed-build fallback). `icon` reuses a charm icon.
 export const STATS = {
   power:  { name: 'Raw Power', icon: 'might', base: 0.08, line: v => `+${pct(v)} damage`, apply: (s, v) => { s.might += v; } },
   skin:   { name: 'Thick Skin', icon: 'vitality', base: 16, line: v => `+${Math.round(v)} max HP`, apply: (s, v) => { s.maxHp += v; } },
@@ -93,13 +93,13 @@ export function statChoices(rand, luck, count = 3, minIdx = 1) {
 }
 
 // Build upgrade choices.
-// ctx = { arsenal, tomes: Map, stats, rand, source: 'level'|'chest'|'shrine'|'moai'|'trial', wcap, tcap, unlocked: { weapon(id), tome(id) }, slots: { weapons, tomes } }
+// ctx = { arsenal, tomes: Map, stats, rand, source: 'level'|'chest'|'shrine'|'amber'|'trial'|'boon', wcap, tcap, unlocked: { weapon(id), tome(id) }, slots: { weapons, tomes } }
 export function rollChoices(ctx, count = 3) {
   const { arsenal, tomes, stats, rand, source } = ctx;
   const wcap = ctx.wcap || 7, tcap = ctx.tcap || 5;
   const canW = ctx.unlocked?.weapon || (() => true), canT = ctx.unlocked?.tome || (() => true);
-  const minIdx = source === 'trial' ? 3 : source === 'chest' ? 2 : source === 'shrine' || source === 'moai' ? 1 : 0;
-  if (source === 'moai') return statChoices(rand, stats.luck, count, minIdx);
+  const minIdx = source === 'trial' ? 3 : source === 'chest' ? 2 : source === 'shrine' || source === 'amber' ? 1 : 0;
+  if (source === 'amber') return statChoices(rand, stats.luck, count, minIdx);
   const cands = [];
   if (source !== 'shrine') {
     for (const w of arsenal.list) if (w.level < wcap) cands.push({ kind: 'weapon', id: w.id, weight: 1.35 });
@@ -135,4 +135,25 @@ function describe(c, rarity, arsenal, tomes) {
   const lv = tomes.get(c.id) || 0;
   const value = tomeValue(c.id, rarity);
   return { kind: 'tome', id: c.id, name: T.name, rarity, levelText: lv ? `LV ${lv} → ${lv + 1}` : 'NEW!', desc: [T.line(value)], value };
+}
+
+// FOSSIL BOONS: unique run-long powers, only granted by beating a Fossil Echo. Each can be taken once.
+export const BOONS = {
+  pocket:  { name: 'Extra Pocket', icon: 'perk', desc: ['+1 weapon slot (6 weapons)'] },
+  rush:    { name: 'Raptor Rush', icon: 'momentum', desc: ['Momentum drains 60% slower'] },
+  shell:   { name: 'Amber Shell', icon: 'armor', desc: ['Blocks one hit every 10 seconds'] },
+  echo:    { name: 'Echo Strike', icon: 'crit', desc: ['15% of weapon hits land twice'] },
+  leech:   { name: 'Life Leech', icon: 'regen', desc: ['Every smash heals 0.35 HP'] },
+  fortune: { name: 'Fossil Fortune', icon: 'coin', desc: ['+40% gold · chests cost 30% less'] },
+  apex:    { name: 'Apex Predator', icon: 'skull', desc: ['+30% damage to bosses'] },
+};
+
+export function boonChoices(rand, owned, count = 3) {
+  const keys = Object.keys(BOONS).filter(k => !owned[k]);
+  const out = [];
+  while (out.length < count && keys.length) {
+    const k = keys.splice((rand() * keys.length) | 0, 1)[0], B = BOONS[k];
+    out.push({ kind: 'boon', id: B.icon, boon: k, name: B.name, rarity: 'legendary', levelText: 'BOON', desc: [...B.desc, 'Lasts the whole run'] });
+  }
+  return out;
 }

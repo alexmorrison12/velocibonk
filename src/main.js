@@ -1,4 +1,4 @@
-// VELOCIBONK — a Megabonk-style survivors-like where SPEED IS DAMAGE.
+// VELOCISMASH — a 3D survivors-like where SPEED IS DAMAGE.
 // Orchestrates rendering, input, the island-hopping run, bosses, quests/unlocks, scoring, and the
 // daily/challenge/leaderboard meta.
 import * as THREE from 'three';
@@ -7,7 +7,7 @@ import { Player } from './player.js';
 import { Enemies, T, TDEF } from './enemies.js';
 import { Pickups } from './pickups.js';
 import { Arsenal, WEAPONS } from './weapons.js';
-import { rollChoices, applyTome, applyStat, freshStats, TOMES } from './upgrades.js';
+import { rollChoices, applyTome, applyStat, freshStats, TOMES, BOONS, boonChoices } from './upgrades.js';
 import { FX, PostFX } from './fx.js';
 import { UI } from './ui.js';
 import { Leaderboard } from './leaderboard.js';
@@ -18,12 +18,12 @@ import { Progress, CHARACTERS, CHAR_ORDER, QUESTS, PERKS } from './progress.js';
 import { resetStage, updateDirector, interact, updateTrial, phaseText, stageTimeLeft, spawnAround } from './stage.js';
 import { mulberry32, hashString, clamp, lerp } from './rng.js';
 
-const SHARE_URL = 'https://alexmorrison12.github.io/velocibonk/';
+const SHARE_URL = 'https://alexmorrison12.github.io/velocismash/';
 const LAUNCH_UTC = Date.UTC(2026, 8, 26);
 
 const store = {
-  get(k, d) { try { const v = localStorage.getItem('velocibonk.' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
-  set(k, v) { try { localStorage.setItem('velocibonk.' + k, JSON.stringify(v)); } catch { /* storage blocked */ } },
+  get(k, d) { try { const v = localStorage.getItem('velocismash.' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('velocismash.' + k, JSON.stringify(v)); } catch { /* storage blocked */ } },
 };
 
 function dailyInfo(n = null) {
@@ -34,7 +34,7 @@ function dailyInfo(n = null) {
   const label = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
   const num = Math.max(1, Math.floor((utc - LAUNCH_UTC) / 86400000) + 1);
   const pretty = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
-  return { n: num, label, pretty, seed: hashString('velocibonk-daily-' + label) };
+  return { n: num, label, pretty, seed: hashString('velocismash-daily-' + label) };
 }
 
 function parseChallenge() {
@@ -47,7 +47,7 @@ function parseChallenge() {
 
 const fmt = n => Math.round(n).toLocaleString('en-US');
 const fmtTime = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-const RANKS = [[0, 'Pebble Pusher'], [50e3, 'Casual Bonker'], [500e3, 'Momentum Enjoyer'], [3e6, 'Speed Demon'], [15e6, 'Island Hopper'], [60e6, 'Sonic Raptor'], [200e6, 'Terminal Velocity'], [600e6, 'VELOCIGOD']];
+const RANKS = [[0, 'Pebble Pusher'], [50e3, 'Casual Smasher'], [500e3, 'Momentum Enjoyer'], [3e6, 'Speed Demon'], [15e6, 'Island Hopper'], [60e6, 'Sonic Raptor'], [200e6, 'Terminal Velocity'], [600e6, 'VELOCIGOD']];
 const rankFor = s => RANKS.reduce((r, [min, name]) => (s >= min ? name : r), RANKS[0][1]);
 
 class Game {
@@ -316,6 +316,7 @@ class Game {
     this.damageFlash = 0; this.whiteFlash = 0;
     this.yaw = 0; this.pitch = 0.38;
     this.dmgByWeapon = {};
+    this.boons = {}; this.shellT = 0; this.fossilEcho = null;
     this.setupIsland(1);
     this.player.model.visible = true; this.player.model.rotation.set(0, 0, 0);
     this.hookPlayerEvents();
@@ -331,7 +332,7 @@ class Game {
       this.ghost.model.visible = true;
       setTimeout(() => this.ui.toast(`GHOST RACE · your best here: ${fmt(this.ghostData.score)}`, { color: '#1AE3FF', duration: 3.5 }), 2600);
     }
-    this.ui.hideTitle(); this.ui.hideGameOver?.(); this.ui.hidePause?.(); this.ui.hideQuests?.();
+    this.ui.hideTitle(); this.ui.hideGameOver?.(); this.ui.hidePause?.(); this.ui.hideQuests?.(); this.ui.hideLevelUp?.();
     this.ui.showHUD(true);
     this.state = 'playing';
     this.lockPointer();
@@ -339,7 +340,7 @@ class Game {
     const rc = this.run.challenge;
     this.ui.announce(rc ? `BEAT ${fmt(rc.score)}` : this.run.daily ? `DAILY #${this.run.daily}` : 'RANDOM RUN',
       { sub: rc ? `${rc.name ? rc.name.toUpperCase() + '’S RUN · ' : ''}${this.run.daily ? 'DAILY #' + this.run.daily : 'RANDOM RUN'}` : `ISLAND 1 · ${this.island.name}`, color: rc ? '#FF3D8B' : '#FFE14D', duration: 2.4 });
-    const tips = [['WASD move · MOUSE look · click to lock the cursor', 1.2], ['SPACE jump — hold it to bunny-hop and build speed', 4.2], ['SHIFT slide downhill · SHIFT in the air = SLAM', 7.2], ['×2 MOMENTUM = RAM MODE: plow straight through them', 10.2], ['The BOSS PORTAL is on your map. Summon early for bonus score', 14]];
+    const tips = [['WASD move · MOUSE look · click to lock the cursor', 1.2], ['SPACE jump — hold it to bunny-hop and build speed', 4.2], ['SHIFT slide downhill · SHIFT in the air = SLAM', 7.2], ['×2 MOMENTUM = RAM MODE: plow straight through them', 10.2], ['Crack the METEOR CRATER (on your map) to summon the boss early for bonus score', 14], ['A FOSSIL GATE hides on every island: beat its echo for a Fossil Boon', 19]];
     this._tipTimers?.forEach(clearTimeout);
     this._tipTimers = (this._shownTips ? tips.slice(4) : tips).map(([t, d]) => setTimeout(() => { if (this.state === 'playing' || this.state === 'levelup') this.ui.toast(t, { color: '#1AE3FF', duration: 3.2 }); }, d * 1000));
     this._shownTips = true;
@@ -370,13 +371,19 @@ class Game {
   xpFor(L) { return Math.floor(6 + L * 4.5 + Math.pow(L, 1.85) * 0.7 + (L > 60 ? 0.02 * Math.pow(L - 60, 3) : 0)); }
 
   // ---------------------------------------------------------------- level up / chest / shrine
-  choiceTitle(source) { return { chest: 'CHEST!', shrine: 'SHRINE BLESSING', moai: 'MOAI BLESSING', trial: 'TRIAL REWARD', boss: 'BOSS LOOT' }[source] || 'LEVEL UP!'; }
+  choiceTitle(source) { return { chest: 'CHEST!', shrine: 'SHRINE BLESSING', amber: 'AMBER MUTATION', boon: 'FOSSIL BOON', trial: 'TRIAL REWARD', boss: 'BOSS LOOT' }[source] || 'LEVEL UP!'; }
 
   roll(source) {
     const P = this.progress;
+    if (source === 'boon') {
+      const c = boonChoices(this.rand, this.boons, 3 + (P.hasPerk('boonplus') ? 1 : 0));
+      if (c.length) return c;
+      source = 'trial'; // every boon owned: epic loot instead
+    }
     return rollChoices({
       arsenal: this.arsenal, tomes: this.tomes, stats: this.stats, rand: this.rand, source: source === 'boss' ? 'chest' : source,
       wcap: this.wcap, tcap: this.tcap, unlocked: { weapon: (id) => P.hasWeapon(id), tome: (id) => P.hasTome(id) },
+      slots: { weapons: this.boons.pocket ? 6 : 5, tomes: 6 },
     });
   }
 
@@ -396,7 +403,7 @@ class Game {
     this.state = 'levelup';
     this.unlockPointer();
     this.ui.showLevelUp({ title: this.choiceTitle(source), choices: this.choices, rerolls: this.rerolls });
-    audio.play(source === 'chest' || source === 'boss' ? 'chest' : source === 'shrine' ? 'shrine' : source === 'moai' ? 'moai' : 'levelup');
+    audio.play(source === 'boon' ? 'legendary' : source === 'chest' || source === 'boss' ? 'chest' : source === 'shrine' ? 'shrine' : source === 'amber' ? 'amber' : 'levelup');
     audio.duck(0.5, 1.2);
   }
 
@@ -413,6 +420,11 @@ class Game {
     } else if (c.kind === 'stat') {
       applyStat(this.stats, c.stat, c.value);
       if (c.stat === 'skin') this.hp += c.value;
+    } else if (c.kind === 'boon') {
+      this.boons[c.boon] = true;
+      if (c.boon === 'apex') this.bossDmgMult *= 1.3;
+      if (c.boon === 'fortune') this.stats.gold += 0.4;
+      this.ui.toast(`FOSSIL BOON · ${c.name}`, { color: '#FFD08A', duration: 2.4 });
     }
     audio.play(c.rarity === 'legendary' ? 'legendary' : 'pick');
     this.ui.hideLevelUp();
@@ -469,11 +481,12 @@ class Game {
       const m = this.nextComboMilestone;
       this.nextComboMilestone = m < 100 ? m + 25 : m < 500 ? m + 100 : m + 250;
       this.score += Math.min(m, 1000) * 20 * this.momentum;
-      this.fx.popText(_p.copy(this.player.pos).setY(this.player.pos.y + 3.4), `${m} BONK COMBO!`, m >= 250 ? '#FF3D8B' : '#FFE14D', m >= 100 ? 1.9 : 1.5);
+      this.fx.popText(_p.copy(this.player.pos).setY(this.player.pos.y + 3.4), `${m} SMASH COMBO!`, m >= 250 ? '#FF3D8B' : '#FFE14D', m >= 100 ? 1.9 : 1.5);
       if (m >= 100) audio.play('newbest', { volume: 0.4 });
     }
     this.score += pts * this.momentum;
     if (this.trial) this.trial.kills++;
+    if (this.boons.leech && this.hp < this.stats.maxHp) this.hp = Math.min(this.stats.maxHp, this.hp + 0.35);
   }
 
   onKill(i, ti, x, y, z, elite, boss) {
@@ -522,6 +535,14 @@ class Game {
 
   hurtPlayer(dmg, fx, fz, shock) {
     if (this.invuln > 0 || this.state !== 'playing' || this.dying || this.cleared) return;
+    if (this.boons.shell && this.shellT <= 0) {
+      // Amber Shell soaks the hit
+      this.shellT = 10; this.invuln = 0.6;
+      this.fx.ring(_p.copy(this.player.pos).setY(this.player.pos.y + 1), 2.6, '#FFB020', 0.4, 0.8);
+      this.fx.shatter?.(_p.copy(this.player.pos).setY(this.player.pos.y + 1.2), '#FFC45A');
+      audio.play('shatter', { volume: 0.6 });
+      return;
+    }
     // no single hit can take more than 45% of max HP: bosses are scary, never unfair
     const d = Math.min(dmg * (1 - this.stats.armor), this.stats.maxHp * 0.45);
     this.hp -= d; this.dmgTaken += d;
@@ -554,7 +575,7 @@ class Game {
     this.hp = 0; this.dying = 2.2; this.timeScale = 0.3;
     this.player.dead = true;
     audio.play('death'); audio.stopMusic();
-    this.ui.announce('BONKED.', { color: '#FF3D8B', duration: 2 });
+    this.ui.announce('SMASHED.', { color: '#FF3D8B', duration: 2 });
     this.player.vel.set(0, 18, 0); this.player.onGround = false;
   }
 
@@ -563,7 +584,7 @@ class Game {
     this._prompt = null; this.ui.setPrompt(null);
     audio.play(b.id === 'dragon' ? 'dragonroar' : 'bossroar');
     this.shake(0.8);
-    this.ui.bossIntro?.({ name: b.name, title: b.title });
+    this.ui.bossIntro?.({ name: b.name, title: b.title, tag: final ? 'FINAL BOSS' : b.isFossil ? 'FOSSIL ECHO' : 'MINI-BOSS' });
     if (final) {
       audio.play('bossintro');
       audio.startMusic('boss', this.island.id);
@@ -582,7 +603,7 @@ class Game {
   onBossDead(b, x, y, z) {
     this.bossKills++;
     if (b.id === 'chonk') this.progress.add('chonks');
-    const bonus = (b.isFinal ? 20000 : 5000) * this.islandN * this.momentum;
+    const bonus = (b.isFinal ? 20000 : b.isFossil ? 10000 : 5000) * this.islandN * this.momentum;
     this.score += bonus;
     this.whiteFlash = 1; this.hitStop = 0.5;
     this.shake(1.2);
@@ -591,10 +612,11 @@ class Game {
     this.fx.ring(_p, 30, '#FFE14D', 0.8, 2);
     audio.play('explosion', { volume: 1, pitch: 0.6 });
     if (b.isFinal) { this.islandCleared(x, z); return; }
+    if (b.isFossil) { this.fossilEchoDefeated(b, x, z); return; }
     this.rerolls++;
-    this.fx.popText(_p.clone().setY(y + 7), 'BOSS BONKED!', '#FFE14D', 3);
+    this.fx.popText(_p.clone().setY(y + 7), 'BOSS SMASHED!', '#FFE14D', 3);
     audio.play('newbest', { volume: 0.8 });
-    this.ui.announce('BOSS BONKED!', { sub: `+${fmt(bonus)} · +1 reroll · boss loot`, color: '#FFE14D' });
+    this.ui.announce('BOSS SMASHED!', { sub: `+${fmt(bonus)} · +1 reroll · boss loot`, color: '#FFE14D' });
     audio.startMusic(this.swarm ? 'final' : 'run', this.island.id);
     setTimeout(() => { if (this.state === 'playing') this.openChoices('boss'); }, 900);
   }
@@ -613,20 +635,73 @@ class Game {
     const best = this.progress.islandBest;
     best[this.islandN] = Math.max(best[this.islandN] || 0, Math.round(this.score));
     this.progress.save();
-    this.world.spawnExitPortal(x, z);
+    // any other boss still around (mini-boss, Fossil Echo) crumbles
+    for (const ob of [...this.enemies.bosses]) if (ob.alive) this.enemies.dismiss(ob.i);
+    if (this.world.fossilGate && this.world.fossilGate.state === 'active') this.world.fossilGate.state = 'used';
+    { // the cannon rises a few steps away from the player, never under their feet
+      const P = this.player.pos; let dx = x - P.x, dz = z - P.z; const dl = Math.hypot(dx, dz);
+      if (dl < 0.5) { dx = -P.x; dz = -P.z; } const k = 9 / (Math.hypot(dx, dz) || 1);
+      this.world.spawnCannon(x + (dl < 9 ? dx * k : 0), z + (dl < 9 ? dz * k : 0));
+    }
     audio.play('victory'); audio.play('portalopen', { volume: 0.7 });
     audio.startMusic('victory', this.island.id);
     this.hp = Math.min(this.stats.maxHp, this.hp + this.stats.maxHp * 0.3);
-    this.ui.announce('ISLAND CLEARED!', { sub: `+${fmt(clearBonus)}${left > 0 ? ` (${fmtTime(left)} early)` : ''} · ${purged} enemies vaporized · portal open`, color: '#FFE14D', duration: 3.5 });
+    this.ui.announce('ISLAND CLEARED!', { sub: `+${fmt(clearBonus)}${left > 0 ? ` (${fmtTime(left)} early)` : ''} · ${purged} enemies vaporized · the LAUNCH CANNON is up`, color: '#FFE14D', duration: 3.5 });
     this.fx.popText(_p.copy(this.player.pos).setY(this.player.pos.y + 4), 'ISLAND CLEARED!', '#FFE14D', 3.2);
   }
 
-  enterExitPortal() {
-    const next = this.nextIsland();
-    audio.play('warp');
-    if (next) { this.state = 'warp'; this.warpT = 0; this.warpSwapped = false; return; }
-    this.victory = true;
-    this.gameOver(true);
+  fossilEchoDefeated(b, x, z) {
+    const gate = this.world.fossilGate;
+    if (gate) gate.state = 'used';
+    this.fossilEcho = null;
+    this.progress.add('fossils');
+    // two free chests burst out where the echo fell
+    for (let k = 0; k < 2; k++) {
+      const a = Math.random() * Math.PI * 2, cx = x + Math.cos(a) * (3 + k * 2), cz = z + Math.sin(a) * (3 + k * 2);
+      if (this.world.heightAt(cx, cz) > 0.4) this.world.spawnFreeChest(cx, cz); else this.world.spawnFreeChest(x, z);
+    }
+    this.fx.popText(_p.set(x, this.world.heightAt(x, z) + 7, z), 'FOSSIL SHATTERED!', '#FFD08A', 3);
+    audio.play('newbest', { volume: 0.8 });
+    this.ui.announce('FOSSIL SHATTERED!', { sub: 'choose a Fossil Boon · 2 free chests dropped', color: '#FFD08A', duration: 2.6 });
+    audio.startMusic(this.swarm ? 'final' : 'run', this.island.id);
+    setTimeout(() => { if (this.state === 'playing') this.openChoices('boon'); }, 900);
+  }
+
+  // stand on the launch cannon's pad: you get loaded and fired off the island
+  fireCannon() {
+    const c = this.world.cannon; if (!c || c.fired) return;
+    c.fired = true; c.recoil = 1;
+    this.world.cannonMuzzle(this.launchPos = new THREE.Vector3(), this.launchDir = new THREE.Vector3());
+    this.launchT = 0; this.state = 'launch';
+    this.player.pos.copy(this.launchPos);
+    this.fx.burst(_p.copy(this.launchPos), '#FFE14D', 40, { speed: 14, size: 0.35, glow: 2 });
+    this.fx.burst(_p.copy(this.launchPos), '#9A9AA8', 30, { speed: 9, size: 0.5 });
+    this.fx.confetti?.(_p.copy(this.launchPos), 60);
+    this.fx.ring(_p.copy(this.launchPos), 8, '#FFFFFF', 0.4, 1);
+    this.shake(1.2); this.whiteFlash = 0.35;
+    audio.play('explosion', { volume: 1, pitch: 0.7 }); audio.play('boost', { volume: 0.9 }); audio.play('warp', { volume: 0.7 });
+    this.ui.setPrompt(null); this._prompt = null;
+  }
+
+  updateLaunch(rdt) {
+    this.launchT += rdt;
+    const t = this.launchT, P = this.player, d = this.launchDir;
+    // a huge floaty arc out over the sea
+    const sp = 55;
+    P.pos.set(this.launchPos.x + d.x * sp * t, this.launchPos.y + d.y * sp * t - 6 * t * t, this.launchPos.z + d.z * sp * t);
+    P.vel.set(d.x * sp, d.y * sp - 12 * t, d.z * sp);
+    P.onGround = false; P.animate(rdt, this.time, 0);
+    P.model.rotation.x += rdt * 9;
+    this.momentum = 8; this.fx.trail(_p.copy(P.pos), 1);
+    const cam = this.camera;
+    cam.position.set(P.pos.x - d.x * 14, P.pos.y + 4 - t * 2, P.pos.z - d.z * 14);
+    cam.lookAt(P.pos.x, P.pos.y, P.pos.z);
+    cam.fov = lerp(cam.fov, 100, 0.08); cam.updateProjectionMatrix();
+    if (t > 1.2) {
+      P.model.rotation.set(0, 0, 0);
+      if (this.nextIsland()) { this.state = 'warp'; this.warpT = 0; this.warpSwapped = false; }
+      else { this.victory = true; this.gameOver(true); }
+    }
   }
 
   // ---------------------------------------------------------------- quests
@@ -654,7 +729,7 @@ class Game {
     if (!oldGhost || score > oldGhost.score) {
       store.set('ghost.' + this.run.tag, { score, path: this.ghostRec });
       const tags = store.get('ghostTags', []).filter(t => t !== this.run.tag); tags.unshift(this.run.tag);
-      for (const old of tags.slice(6)) { try { localStorage.removeItem('velocibonk.ghost.' + old); } catch { /* ignore */ } }
+      for (const old of tags.slice(6)) { try { localStorage.removeItem('velocismash.ghost.' + old); } catch { /* ignore */ } }
       store.set('ghostTags', tags.slice(0, 6));
     }
     if (this.ghost) this.ghost.model.visible = false;
@@ -664,8 +739,8 @@ class Game {
     const link = `${SHARE_URL}#vs-${this.run.tag}-${score}`;
     const trueEnd = victory && this.islandN === 5;
     const shareText = [
-      `VELOCIBONK 🦖 ${this.run.daily ? `Daily #${this.run.daily}` : 'Random Run'} · ${trueEnd ? 'ARCHIPELAGO CONQUERED 👑' : `Island ${this.maxIsland}/5`}`,
-      `💥 ${fmt(score)} pts · ⏱ ${fmtTime(this.runTime)} · ☠ ${fmt(this.kills)} bonks`,
+      `VELOCISMASH 🦖 ${this.run.daily ? `Daily #${this.run.daily}` : 'Random Run'} · ${trueEnd ? 'ARCHIPELAGO CONQUERED 👑' : `Island ${this.maxIsland}/5`}`,
+      `💥 ${fmt(score)} pts · ⏱ ${fmtTime(this.runTime)} · ☠ ${fmt(this.kills)} smashes`,
       `🏎 ${Math.round(this.topSpeed * 3.6)} km/h top speed · ×${this.maxMomentum.toFixed(1)} momentum`,
       `Beat it: ${link}`,
     ].join('\n');
@@ -676,7 +751,7 @@ class Game {
     this.ui.showGameOver({
       score, time: this.runTime, kills: this.kills, level: this.level, topSpeed: this.topSpeed, maxMomentum: this.maxMomentum,
       bossKills: this.bossKills, damageByWeapon, isBest, rank: rankFor(score), bests: this.bests.slice(0, 5), daily: this.run.daily, challenge, shareText,
-      victory, headline: trueEnd ? 'VELOCIBONK CONQUERED!' : victory ? 'ISLAND CLEARED!' : undefined,
+      victory, headline: trueEnd ? 'VELOCISMASH CONQUERED!' : victory ? 'ISLAND CLEARED!' : undefined,
       islandsCleared: this.islandsCleared, islandReached: this.maxIsland, unlocks, questsDone: this.progress.newThisRun.map(q => q.name),
     });
     if (trueEnd) audio.play('truevictory'); else if (victory) audio.play('victory'); else if (isBest) audio.play('newbest');
@@ -708,11 +783,12 @@ class Game {
   slamImpact(fall) {
     const P = this.player.pos, E = this.enemies;
     const r = 3.8 * this.stats.area * (1 + fall / 60);
-    const dmg = 22 * (1 + fall / 30) * this.stats.might * this.momentum;
+    // tuned down: slams are crowd control, not a boss killer (bosses also take only 30%)
+    const dmg = 12 * (1 + Math.min(fall, 60) / 45) * this.stats.might * Math.min(this.momentum, 2.5);
     this.fx.ring(_p.copy(P).setY(P.y + 0.3), r, '#FFFFFF', 0.35, 0.7);
     this.fx.burst(_p.copy(P).setY(P.y + 0.3), '#d8c29a', 18, { speed: 9, up: 6, size: 0.25 });
     this.shake(0.35 + fall / 120);
-    audio.play('bonk', { volume: 0.9, pitch: 0.7 });
+    audio.play('smash', { volume: 0.9, pitch: 0.7 });
     const n = E.query(P.x, P.z, r, _hits, 600);
     for (let k = 0; k < n; k++) {
       const i = _hits[k], dx = E.x[i] - P.x, dz = E.z[i] - P.z, d = Math.hypot(dx, dz) + 1e-4;
@@ -751,6 +827,8 @@ class Game {
       this.updateIntro(rdt);
     } else if (this.state === 'warp') {
       this.updateWarp(rdt);
+    } else if (this.state === 'launch') {
+      this.updateLaunch(rdt);
     }
 
     const P = this.player.pos;
@@ -820,7 +898,7 @@ class Game {
       const I = this.island;
       this.hp = Math.min(this.stats.maxHp, this.hp + this.stats.maxHp * 0.5);
       if (this.ghost) this.ghost.model.visible = false;
-      this.ui.showIslandIntro?.({ n, name: I.name, biome: I.id, subtitle: I.subtitle, caps: `WEAPONS LV ${this.wcap} · TOMES LV ${this.tcap}` });
+      this.ui.showIslandIntro?.({ n, name: I.name, biome: I.id, subtitle: I.subtitle, caps: `WEAPONS LV ${this.wcap} · CHARMS LV ${this.tcap}` });
       audio.startMusic('run', I.id);
       this.updateCamera(0.016, 0.016);
     }
@@ -828,7 +906,7 @@ class Game {
       this.post.warp?.(0);
       this.state = 'playing';
       this.lockPointer();
-      this.ui.announce(`ISLAND ${this.islandN} · ${this.island.name}`, { sub: `level caps raised: weapons ${this.wcap} · tomes ${this.tcap}`, color: '#FFE14D', duration: 2.6 });
+      this.ui.announce(`ISLAND ${this.islandN} · ${this.island.name}`, { sub: `level caps raised: weapons ${this.wcap} · charms ${this.tcap}`, color: '#FFE14D', duration: 2.6 });
       setTimeout(() => this.ui.hideIslandIntro?.(), 900);
     }
   }
@@ -871,9 +949,9 @@ class Game {
     for (let i = 0; i < steps; i++) P.update(dt / steps, i === 0 ? input : { ...input, jumpPressed: false, slidePressed: false }, this.yaw, this.stats);
     P.animate(dt, this.time, this.yaw);
 
-    const eff = Math.hypot(P.hSpeed, Math.max(0, -P.vel.y) * 0.55);
+    const eff = Math.hypot(P.hSpeed, Math.max(0, -P.vel.y) * 0.25);
     const target = Math.min(8, 1 + this.stats.momentum * Math.max(0, eff - 8) / 10);
-    this.momentum = target > this.momentum ? lerp(this.momentum, target, 1 - Math.exp(-10 * dt)) : lerp(this.momentum, target, 1 - Math.exp(-2.4 * dt));
+    this.momentum = target > this.momentum ? lerp(this.momentum, target, 1 - Math.exp(-10 * dt)) : lerp(this.momentum, target, 1 - Math.exp(-(this.boons.rush ? 0.95 : 2.4) * dt));
     this.ramming = this.momentum >= 2 && !P.dead;
     if (this.ramming && !this.ramAnnounced) {
       this.ramAnnounced = true;
@@ -888,6 +966,7 @@ class Game {
 
     if (!this.dying) {
       this.invuln -= dt;
+      if (this.boons.shell && this.shellT > 0) { this.shellT -= dt; if (this.shellT <= 0) this.fx.ring(_p.copy(P.pos).setY(P.pos.y + 1), 1.8, '#FFB020', 0.3, 0.4); }
       if (this.runTime > 60) { this.noHitT += dt; this.progress.max('nohit', this.noHitT); }
       this.comboT -= dt; if (this.combo > this.bestCombo) this.bestCombo = this.combo;
       if (this.comboT <= 0 && this.combo) { this.combo = 0; this.nextComboMilestone = 25; }
@@ -944,7 +1023,7 @@ class Game {
     G.animate(dt, this.time, 0);
   }
 
-  chestCost() { const n = this.chestsOpened; return 15 + n * 12 + n * n * 3; }
+  chestCost() { const n = this.chestsOpened; return Math.round((15 + n * 12 + n * n * 3) * (this.boons?.fortune ? 0.7 : 1)); }
 
   updateCamera(dt, rdt) {
     const P = this.player, cam = this.camera;
@@ -995,8 +1074,9 @@ class Game {
       for (let q = 0; q < E.activeCount && n < 1200; q++) { const i = E.active[q]; if (E.state[i] !== 1) continue; dots[n * 2] = E.x[i]; dots[n * 2 + 1] = E.z[i]; n++; }
       const P = this.player.pos, w = this.world;
       const portals = [];
-      if (w.bossPortal && !this.cleared) portals.push({ x: w.bossPortal.x, z: w.bossPortal.z, kind: 'boss', active: !this.finalSpawned });
-      if (w.exitPortal) portals.push({ x: w.exitPortal.x, z: w.exitPortal.z, kind: 'exit', active: true });
+      if (w.meteor && !this.cleared && !this.finalSpawned) portals.push({ x: w.meteor.x, z: w.meteor.z, kind: 'meteor', active: true });
+      if (w.fossilGate && !this.cleared) portals.push({ x: w.fossilGate.x, z: w.fossilGate.z, kind: 'fossil', active: w.fossilGate.state !== 'used' });
+      if (w.cannon) portals.push({ x: w.cannon.x, z: w.cannon.z, kind: 'cannon', active: true });
       this.ui.updateMinimap({
         px: P.x, pz: P.z, heading: this.yaw, worldRadius: PLAY_R, enemies: dots, enemyCount: n,
         chests: w.chests.map(c => ({ x: c.x, z: c.z, opened: c.opened })),

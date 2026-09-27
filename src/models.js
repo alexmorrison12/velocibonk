@@ -1,4 +1,4 @@
-// VELOCIBONK — procedural low-poly models. Everything is built from primitives in code.
+// VELOCISMASH — procedural low-poly models. Everything is built from primitives in code.
 // Conventions: Y-up, meters, characters face +Z (their LEFT is +X), feet at y=0 (bat: origin at body center).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -2243,20 +2243,6 @@ export function buildHazardGeometry(kind) {
 // ===========================================================================
 // Structures (Groups with named children the game animates)
 // ===========================================================================
-// flat ring of rune glyphs (flat = lying on the ground, else standing in the XY plane facing +Z)
-function runeGeo(n, radius, size, seed = 1, flat = true) {
-  const rnd = mulberry32(seed), parts = [];
-  for (let i = 0; i < n; i++) {
-    const a = (i / n) * TAU, strokes = 2 + Math.floor(rnd() * 2);
-    for (let j = 0; j < strokes; j++) {
-      const p = new THREE.PlaneGeometry(size * 0.13, size * (0.45 + rnd() * 0.5));
-      p.rotateZ((rnd() - 0.5) * 1.8); p.translate((rnd() - 0.5) * size * 0.45, (rnd() - 0.5) * size * 0.25, 0);
-      if (flat) { p.translate(0, radius, 0); p.rotateX(-Math.PI / 2); p.rotateY(a); } else { p.translate(0, radius, 0); p.rotateZ(a); }
-      parts.push(rampGeo(p, () => 1));
-    }
-  }
-  return mergeGeometries(parts);
-}
 // glowing circle the player stands in (bright rim, faint fill)
 function padMesh(r, color, y) {
   const geo = rampGeo(new THREE.RingGeometry(r * 0.12, r, 40, 3), (x, yy) => { const d = Math.hypot(x, yy) / r; return d > 0.8 ? 1 : 0.22; });
@@ -2271,124 +2257,403 @@ function glowChild(geo, name, color, opacity = 0.85, vc = true) {
   return m;
 }
 
-function portal(o) {
-  const g = new THREE.Group(); g.name = o.name;
-  const mat = makeToonMaterial();
-  const { RZ, RY, RR, RT } = o;
-  const k = new Kit(false, o.seed);
-  k.add(new THREE.CylinderGeometry(o.pr, o.pr + 0.3, 0.45, 20), (l) => (l.y > 0.2 ? o.ST_L : o.ST), { p: [0, 0.225, 0], jitter: 0.07 });
-  k.add(new THREE.CylinderGeometry(o.pr - 0.8, o.pr - 0.6, 0.32, 20), (l) => (l.y > 0.15 ? o.TOP : o.ST_D), { p: [0, 0.61, 0], jitter: 0.05 });
-  if (o.trim) k.add(new THREE.CylinderGeometry(o.pr + 0.04, o.pr + 0.04, 0.09, 20, 1, true), o.trim, { p: [0, 0.4, 0], jitter: 0 });
-  // ring supports + a sill under the ring
-  for (const s of sides) {
-    k.seg([(RR - 0.15) * s, 0.7, RZ], [(RR - 0.35) * s, 2.0, RZ], 0.42, 0.3, 6, o.ST, { jitter: 0.06 });
-    k.add(new THREE.BoxGeometry(0.8, 0.22, 0.8), o.CAP, { p: [(RR - 0.35) * s, 2.05, RZ] });
+const ni = (g) => (g.index ? g.toNonIndexed() : g);
+// Remap every vertex of a geometry: fn(x, y, z) -> [x, y, z]. Returns the same geometry.
+function warp(geo, fn) {
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) { const [x, y, z] = fn(p.getX(i), p.getY(i), p.getZ(i)); p.setXYZ(i, x, y, z); }
+  return geo;
+}
+// Box whose front (+Z) face is scaled by fx (x) and fy (height, keeping the bottom edge level).
+function taperBox(w, h, d, fx, fy) {
+  return warp(new THREE.BoxGeometry(w, h, d), (x, y, z) => (z > 0 ? [x * fx, -h / 2 + (y + h / 2) * fy, z] : [x, y, z]));
+}
+// Point + outward normal on an ellipsoid (centre c, radii r) in direction dir.
+function ellipsoidPt(c, r, dir) {
+  const d = V(dir).normalize();
+  const t = 1 / Math.sqrt((d.x / r[0]) ** 2 + (d.y / r[1]) ** 2 + (d.z / r[2]) ** 2);
+  const p = new THREE.Vector3(c[0] + d.x * t, c[1] + d.y * t, c[2] + d.z * t);
+  const n = new THREE.Vector3((d.x * t) / r[0] ** 2, (d.y * t) / r[1] ** 2, (d.z * t) / r[2] ** 2).normalize();
+  return { p, n };
+}
+// Glowing vein ribbons that walk along the edges of a (centred, non-indexed) mesh surface.
+// Returns non-indexed geometry with an orange outer ribbon + hot yellow core, lifted slightly off the surface.
+function surfaceVeins(geo, walks, steps, width, seed, minY) {
+  const pos = geo.attributes.position, verts = [], ids = new Map(), adj = [];
+  const vid = (i) => {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), key = `${Math.round(x * 1000)},${Math.round(y * 1000)},${Math.round(z * 1000)}`;
+    let id = ids.get(key);
+    if (id === undefined) { id = verts.length; ids.set(key, id); verts.push(new THREE.Vector3(x, y, z)); adj.push(new Set()); }
+    return id;
+  };
+  for (let t = 0; t < pos.count; t += 3) {
+    const a = vid(t), b = vid(t + 1), c = vid(t + 2);
+    adj[a].add(b).add(c); adj[b].add(a).add(c); adj[c].add(a).add(b);
   }
-  k.add(new THREE.BoxGeometry(1.8, 0.5, 1.1), o.ST_D, { p: [0, 0.9, RZ] });
-  o.decoratePlatform(k);
-  g.add(solidMesh(k.build(), 'platform', mat));
-  const r = new Kit(false, o.seed + 1);
-  o.decorateRing(r);
-  const ring = solidMesh(r.build(), 'ring', mat);
-  ring.position.set(0, RY, RZ);
-  g.add(ring);
-  const vortex = new THREE.Mesh(new THREE.CircleGeometry(o.VR, 48), new THREE.MeshBasicMaterial({ color: o.vortex, side: THREE.DoubleSide }));
-  vortex.name = 'vortex'; vortex.position.set(0, RY, RZ);
-  g.add(vortex);
-  const runes = glowChild(runeGeo(o.runeN, o.runeR, 0.42, o.seed), 'runes', o.rune);
-  runes.position.y = 0.785;
-  g.add(runes);
-  const pad = padMesh(1.25, o.pad, 0.785);
-  pad.position.z = 1.3;
+  const rnd = mulberry32(seed), P = [], C = [];
+  const OUT = [1.0, 0.32, 0.04], CORE = [1.0, 0.85, 0.45];
+  const ribbon = (a, b, wa, wb, lift, colr) => {
+    const na = a.clone().normalize(), nb = b.clone().normalize(), e = b.clone().sub(a);
+    const sa = new THREE.Vector3().crossVectors(e, na).normalize(), sb = new THREE.Vector3().crossVectors(e, nb).normalize();
+    const A0 = a.clone().addScaledVector(na, lift).addScaledVector(sa, wa / 2), A1 = a.clone().addScaledVector(na, lift).addScaledVector(sa, -wa / 2);
+    const B0 = b.clone().addScaledVector(nb, lift).addScaledVector(sb, wb / 2), B1 = b.clone().addScaledVector(nb, lift).addScaledVector(sb, -wb / 2);
+    for (const v of [A0, A1, B0, A1, B1, B0]) { P.push(v.x, v.y, v.z); C.push(...colr); }
+  };
+  for (let w = 0; w < walks; w++) {
+    let v = 0;
+    for (let tries = 0; tries < 50; tries++) { v = Math.floor(rnd() * verts.length); if (verts[v].y > minY + 0.3) break; }
+    const seen = new Set([v]);
+    let prev = null;
+    const n = steps - Math.floor(rnd() * 2);
+    for (let s = 0; s < n; s++) {
+      let best = -1, bs = -Infinity;
+      for (const u of adj[v]) {
+        if (seen.has(u) || verts[u].y < minY) continue;
+        const d = verts[u].clone().sub(verts[v]).normalize();
+        const sc = (prev ? d.dot(prev) : 0) + rnd() * 0.9;
+        if (sc > bs) { bs = sc; best = u; }
+      }
+      if (best < 0) break;
+      const wa = width * (1 - (s / n) * 0.7), wb = width * (1 - ((s + 1) / n) * 0.7);
+      ribbon(verts[v], verts[best], wa, wb, 0.02, OUT);
+      ribbon(verts[v], verts[best], wa * 0.38, wb * 0.38, 0.03, CORE);
+      prev = verts[best].clone().sub(verts[v]).normalize();
+      seen.add(best); v = best;
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
+  return g;
+}
+// Low berm segment of a ring (lathe arc between phi0..phi0+len) with closed end caps. prof: [[r, y], ...] from ground to ground.
+function bermArc(prof, phi0, len, seg) {
+  const lg = ni(new THREE.LatheGeometry(prof.slice().reverse().map(([x, y]) => new THREE.Vector2(x, y)), seg, phi0, len));
+  for (const k of Object.keys(lg.attributes)) if (k !== 'position') lg.deleteAttribute(k);
+  const cx = prof.reduce((s, q) => s + q[0], 0) / prof.length, cy = prof.reduce((s, q) => s + q[1], 0) / prof.length;
+  const tri = [];
+  for (const [phi, sgn] of [[phi0, -1], [phi0 + len, 1]]) {
+    const at = (r, y) => new THREE.Vector3(Math.sin(phi) * r, y, Math.cos(phi) * r);
+    const tan = new THREE.Vector3(Math.cos(phi), 0, -Math.sin(phi)).multiplyScalar(sgn);
+    const c = at(cx, cy);
+    for (let i = 0; i < prof.length; i++) {
+      const a = at(...prof[i]), b = at(...prof[(i + 1) % prof.length]);
+      const n = new THREE.Vector3().crossVectors(b.clone().sub(a), c.clone().sub(a));
+      if (n.dot(tan) >= 0) tri.push(a, b, c); else tri.push(a, c, b);
+    }
+  }
+  return mergeGeometries([lg, triGeo(tri)]);
+}
+
+// ---------------------------------------------------------------------------
+// Meteor crater — the final-boss summoning site. Low broken rim (runnable), charred meteorite half-buried in the middle.
+// ---------------------------------------------------------------------------
+function structMeteorCrater() {
+  const g = new THREE.Group(); g.name = 'meteorCrater';
+  const ASH = '#2A2224', ASH2 = '#362C2C', SCORCH = '#3E322A', SCORCH2 = '#4C3E32', DIRT = '#6E5A46', DIRT_L = '#86705A', RIM = '#5A4838';
+  const k = new Kit(false, 1501);
+  // scorched crater floor (radial bands, burnt patches)
+  const floor = new THREE.RingGeometry(1.1, 4.5, 28, 4); floor.rotateX(-Math.PI / 2);
+  k.add(floor, (l) => { const r = Math.hypot(l.x, l.z), h = hash3(l.x, 0, l.z, 3); return r < 2.3 ? (h < 0.4 ? ASH : ASH2) : r < 3.5 ? (h < 0.35 ? ASH2 : SCORCH) : h < 0.4 ? SCORCH : SCORCH2; }, { p: [0, 0.04, 0], jitter: 0.06 });
+  // broken rim: three low berm arcs with walk-in gaps (front gap is widest)
+  const prof = [[4.15, 0], [4.4, 0.26], [4.75, 0.4], [5.1, 0.28], [5.5, 0]];
+  const D = Math.PI / 180;
+  for (const [a0, a1, i] of [[26, 96, 0], [124, 202, 1], [230, 333, 2]]) {
+    let arc = lumpy(bermArc(prof, a0 * D, (a1 - a0) * D, Math.round((a1 - a0) / 9)), 0.035, 7 + i);
+    arc = warp(arc, (x, y, z) => [x, y * (0.72 + 0.5 * hash3(x, 0, z, 11)), z]);
+    k.add(arc, (l) => { const r = Math.hypot(l.x, l.z); return l.y > 0.3 ? RIM : r < 4.7 ? SCORCH2 : hash3(l.x, l.y, l.z, 2) < 0.3 ? DIRT_L : DIRT; }, { jitter: 0.07 });
+  }
+  // ejecta boulders on / beyond the rim (kept under 0.6 m)
+  const rnd = mulberry32(1502);
+  for (let i = 0; i < 16; i++) {
+    const a = rnd() * TAU, deg = ((a / D) % 360 + 360) % 360;
+    const inGap = deg > 333 || deg < 26 || (deg > 96 && deg < 124) || (deg > 202 && deg < 230);
+    const r = inGap ? 5.7 + rnd() * 0.7 : 4.5 + rnd() * 1.6, s = 0.2 + rnd() * 0.15;
+    k.add(new THREE.IcosahedronGeometry(s, 0), (l) => (l.y > 0 ? '#4A4040' : '#3A3232'), { p: [Math.sin(a) * r, (r < 5.3 ? 0.2 : 0.06), Math.cos(a) * r], s: [1.3, 0.75, 1], r: [0, a, rnd()], jitter: 0.1 });
+  }
+  // pushed-up soil collar around the impact
+  k.add(lumpy(lathe([[1.15, 0], [1.4, 0.3], [1.9, 0.34], [2.6, 0.02]], 14), 0.06, 4), (l) => (l.y > 0.25 ? SCORCH2 : DIRT), { jitter: 0.08, inv: true });
+  g.add(solidMesh(k.build(), 'crater'));
+
+  // the meteorite: charred, lumpy, half-buried; origin at its centre
+  const RY = 0.45;
+  const rockGeo = lumpy(new THREE.IcosahedronGeometry(1.5, 2), 0.1, 21).applyMatrix4(new THREE.Matrix4().makeScale(1.0, 0.78, 1.05));
+  const MOLT = hdr('#FF6A1A', 1.6);
+  const rk = new Kit(false, 1503);
+  rk.add(rockGeo, (l) => { const h = hash3(l.x, l.y, l.z, 9); return h < 0.05 ? MOLT : h < 0.35 ? '#1E1719' : h < 0.75 ? ASH : l.y > 0.5 ? '#4A3E3E' : ASH2; }, { jitter: 0.08 });
+  const rock = solidMesh(rk.build(), 'rock');
+  rock.position.set(0, RY, 0);
+  g.add(rock);
+  const cracks = glowChild(surfaceVeins(rockGeo, 9, 5, 0.13, 1504, -RY + 0.05), 'cracks', '#FFFFFF', 0.95);
+  rock.add(cracks);
+
+  const pad = padMesh(3.4, '#FF5A1A', 0.08);
   g.add(pad);
-  g.userData = { radius: 3.2, height: o.height, portalCenter: { x: 0, y: RY, z: RZ }, padCenter: { x: 0, y: 0.785, z: 1.3 } };
+  // embers: small glowing chunks on the crater floor
+  const er = mulberry32(1505), em = [];
+  for (let i = 0; i < 9; i++) {
+    const a = er() * TAU, r = 1.9 + er() * 2.3, s = 0.1 + er() * 0.1;
+    const e = rampGeo(new THREE.OctahedronGeometry(s, 0), (x, y) => (y > 0 ? 1 : 0.6));
+    e.scale(1.3, 0.7, 1); e.rotateY(er() * TAU); e.translate(Math.sin(a) * r, 0.1, Math.cos(a) * r);
+    em.push(ni(e));
+  }
+  g.add(glowChild(mergeGeometries(em), 'embers', '#FF7A2A', 0.95));
+  g.userData = { radius: 4.5, height: +(RY + 1.5 * 0.78 * 1.1).toFixed(2), padCenter: { x: 0, y: 0.08, z: 0 } };
   return g;
 }
 
-function structBossPortal() {
-  const RR = 2.95, RT = 0.46;
-  const ST = '#3A3440', ST_D = '#231F29', ST_L = '#554C60', BONE = '#D8D0BC', SOCK = '#120E16', GEM = hdr('#FF2A6A', 2.2), GEM2 = hdr('#B04DFF', 2.0);
-  return portal({
-    name: 'bossPortal', seed: 1001, RZ: -1.1, RY: 3.9, RR, RT, VR: 2.6, pr: 4.2, height: 7.9,
-    ST, ST_D, ST_L, TOP: '#4A4254', CAP: ST_L, vortex: '#7A2CFF', rune: '#FF2A6A', pad: '#B04DFF', runeN: 28, runeR: 3.05,
-    decoratePlatform(k) {
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * TAU + TAU / 16, x = Math.sin(a) * 4.32, z = Math.cos(a) * 4.32;
-        k.add(new THREE.IcosahedronGeometry(0.22, 0), BONE, { p: [x, 0.26, z], s: [1, 0.9, 0.8], r: [0, a, 0] });
-        for (const s of sides) k.add(new THREE.OctahedronGeometry(0.065, 0), SOCK, { p: [x + Math.cos(a) * 0.08 * s + Math.sin(a) * 0.16, 0.29, z - Math.sin(a) * 0.08 * s + Math.cos(a) * 0.16], jitter: 0 });
-      }
-      for (let i = 0; i < 6; i++) { // leaning standing stones around the back
-        const a = Math.PI * 0.62 + (i / 5) * Math.PI * 0.76, x = Math.sin(a) * 3.75, z = Math.cos(a) * 3.75;
-        k.add(new THREE.BoxGeometry(0.5, 1.5 + (i % 2) * 0.5, 0.35), (l) => (l.y > 0.5 ? ST_L : ST), { p: [x, 1.0, z], r: [0.1 * (i % 2 ? 1 : -1), a, 0.12] });
-        k.add(new THREE.OctahedronGeometry(0.1, 0), i % 2 ? GEM : GEM2, { p: [x - Math.sin(a) * 0.2, 1.35, z - Math.cos(a) * 0.2], jitter: 0 });
-      }
-    },
-    decorateRing(r) {
-      r.add(new THREE.TorusGeometry(RR, RT, 6, 24), (l) => (hash3(l.x, l.y, l.z, 2) < 0.3 ? ST_D : ST), { jitter: 0.08 });
-      for (let i = 0; i < 12; i++) {
-        const a = (i / 12) * TAU + TAU / 24, c = Math.cos(a), sn = Math.sin(a);
-        if (sn < -0.8) continue; // bottom sits in the platform
-        r.seg([c * (RR + RT * 0.6), sn * (RR + RT * 0.6), 0], [c * (RR + RT + 0.8), sn * (RR + RT + 0.8), 0], 0.24, 0, 4, ST_L, { jitter: 0.06 });
-        r.add(new THREE.OctahedronGeometry(0.14, 0), i % 2 ? GEM : GEM2, { p: [c * RR, sn * RR, RT * 0.95], jitter: 0 });
-      }
-      // horned skull at the crown of the ring
-      r.add(new THREE.IcosahedronGeometry(0.62, 1), BONE, { p: [0, RR + RT + 0.3, 0.25], s: [1, 0.95, 0.9] });
-      for (const s of sides) {
-        r.add(new THREE.OctahedronGeometry(0.18, 0), GEM, { p: [0.22 * s, RR + RT + 0.38, 0.8], s: [1, 0.8, 0.45], jitter: 0 });
-        r.seg([0.45 * s, RR + RT + 0.55, 0.1], [1.05 * s, RR + RT + 1.2, -0.1], 0.15, 0, 5, BONE);
-      }
-      r.add(new THREE.BoxGeometry(0.62, 0.2, 0.4), BONE, { p: [0, RR + RT - 0.15, 0.45] });
-    },
-  });
+// ---------------------------------------------------------------------------
+// Launch cannon — spawns after a boss dies; the player climbs in and is fired to the next island.
+// 'barrel' is a pivot at the trunnion: its geometry points along local +Z; at rest barrel.rotation.x = -pitch.
+// ---------------------------------------------------------------------------
+function boltShape(s) {
+  const pts = [[0.16, 0.5], [-0.24, -0.04], [-0.01, -0.04], [-0.16, -0.5], [0.26, 0.1], [0.03, 0.1]];
+  const sh = new THREE.Shape();
+  pts.forEach(([x, y], i) => (i ? sh.lineTo(x * s, y * s) : sh.moveTo(x * s, y * s)));
+  sh.closePath();
+  return sh;
+}
+function structLaunchCannon() {
+  const g = new THREE.Group(); g.name = 'launchCannon';
+  const CREAM = '#FFF1D6', ORANGE = '#FF8A2A', ORANGE_D = '#E0661A', TEAL = '#1FC8C0', TEAL_D = '#138C88', BRASS = '#F2B437', BRASS_D = '#C98A1E', NAVY = '#2A3552', NAVY_L = '#3A4A70', BORE = '#1A1210';
+  const PITCH = 40 * (Math.PI / 180), PIV = [0, 2.45, 0.25], DECK = 0.55;
+  const k = new Kit(false, 1601);
+  // platform drum + brass trim + bolts + rear step
+  k.add(new THREE.CylinderGeometry(3.4, 3.55, DECK, 20), (l) => (l.y > DECK / 2 - 0.01 ? (hash3(l.x, 0, l.z, 1) < 0.5 ? NAVY_L : NAVY) : l.y > 0 ? TEAL_D : NAVY), { p: [0, DECK / 2, 0], jitter: 0.03 });
+  k.add(new THREE.CylinderGeometry(3.44, 3.44, 0.12, 20, 1, true), BRASS, { p: [0, DECK - 0.05, 0], jitter: 0.03 });
+  k.add(new THREE.CylinderGeometry(3.58, 3.58, 0.1, 20, 1, true), BRASS_D, { p: [0, 0.08, 0], jitter: 0.03 });
+  for (let i = 0; i < 12; i++) { const a = (i / 12) * TAU + TAU / 24; k.add(new THREE.OctahedronGeometry(0.11, 0), BRASS, { p: [Math.sin(a) * 3.47, 0.3, Math.cos(a) * 3.47], s: [1, 1, 0.6], r: [0, a, 0], jitter: 0 }); }
+  k.add(new THREE.BoxGeometry(1.8, 0.28, 0.6), (l) => (l.y > 0.1 ? BRASS : NAVY), { p: [0, 0.14, -3.55] });
+  // speed chevrons on the front deck, pointing +Z (the launch direction)
+  const chev = new THREE.ExtrudeGeometry(chevronShape(0.55, 0.7, 0.2), { depth: 0.03, bevelEnabled: false });
+  [1.95, 2.45, 2.95].forEach((z, i) => k.add(chev, i === 1 ? CREAM : TEAL, { p: [0, DECK, z], r: [-Math.PI / 2, 0, 0], s: 1 - i * 0.12, jitter: 0 }));
+  // turret ring
+  k.add(new THREE.CylinderGeometry(1.8, 1.9, 0.2, 20), (l) => (l.y > 0.09 ? BRASS : BRASS_D), { p: [0, DECK + 0.1, PIV[2]], jitter: 0.03 });
+  const T = DECK + 0.2;
+  // carriage cheeks + trunnion axle
+  for (const s of sides) {
+    k.add(warp(new THREE.BoxGeometry(0.3, 2.1, 1.7), (x, y, z) => [x, y, y > 0 ? z * 0.55 : z]), (l) => (l.y > 0.9 ? ORANGE : ORANGE_D), { p: [1.24 * s, T + 1.05, PIV[2]], jitter: 0.03 });
+    k.add(new THREE.CylinderGeometry(0.26, 0.26, 0.18, 10), BRASS, { p: [1.46 * s, PIV[1], PIV[2]], r: [0, 0, Math.PI / 2] });
+  }
+  k.add(new THREE.CylinderGeometry(0.2, 0.2, 2.5, 8), BRASS_D, { p: PIV, r: [0, 0, Math.PI / 2] });
+  // big toy wheels (teal tyres, cream spokes, brass hub with a star)
+  const WR = 1.05, WY = T + WR + 0.18;
+  const star = new THREE.ExtrudeGeometry(starShape(0.32, 0.14), { depth: 0.06, bevelEnabled: false });
+  for (const s of sides) {
+    const x = 1.68 * s;
+    k.add(new THREE.TorusGeometry(WR, 0.2, 4, 14), (l) => (hash3(l.x, l.y, l.z, 3) < 0.5 ? TEAL : TEAL_D), { p: [x, WY, PIV[2] - 0.05], r: [0, Math.PI / 2, 0], jitter: 0.03 });
+    for (let i = 0; i < 4; i++) k.add(new THREE.BoxGeometry(0.1, WR * 2 - 0.2, 0.16), CREAM, { p: [x, WY, PIV[2] - 0.05], r: [(i / 4) * Math.PI, 0, 0], jitter: 0.03 });
+    k.add(new THREE.CylinderGeometry(0.3, 0.3, 0.34, 10), BRASS_D, { p: [x, WY, PIV[2] - 0.05], r: [0, 0, Math.PI / 2] });
+    k.add(star, BRASS, { p: [x + 0.17 * s, WY, PIV[2] - 0.05], r: [0, (Math.PI / 2) * s, 0], jitter: 0 });
+  }
+  g.add(solidMesh(k.build(), 'platform'));
+
+  // barrel (pivot object) -> geometry along local +Z
+  const barrel = new THREE.Object3D(); barrel.name = 'barrel';
+  barrel.position.set(...PIV); barrel.rotation.x = -PITCH;
+  barrel.userData.pitch = PITCH;
+  const LM = 4.1; // mouth distance from pivot
+  const prof = [[0, -1.38], [0.26, -1.33], [0.3, -1.12], [0.7, -1.02], [0.95, -0.72], [1.02, -0.32], [1.02, 0.36], [0.9, 0.48], [0.86, 2.7], [0.96, 2.8], [0.96, 3.12], [0.84, 3.22], [0.84, 3.52], [1.08, 3.74], [1.12, LM], [0.74, LM], [0.7, 3.3], [0, 3.3]];
+  const b = new Kit(false, 1602);
+  b.add(lathe(prof, 12), (l) => {
+    const r = Math.hypot(l.x, l.z), y = l.y;
+    if (y > 3.25 && r < 0.8) return BORE;
+    if (y > 3.5) return BRASS;
+    if (y > 2.74 && y < 3.18) return TEAL;
+    if (y > -0.36 && y < 0.44) return TEAL;
+    if (y < -1.0) return BRASS;
+    if (y < -0.36) return CREAM;
+    return ORANGE;
+  }, { r: [Math.PI / 2, 0, 0], jitter: 0.03 });
+  const bolt = new THREE.ExtrudeGeometry(boltShape(1.35), { depth: 0.05, bevelEnabled: false });
+  const qL = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0)));
+  const qR = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(-1, 0, 0)));
+  b.add(bolt, CREAM, { p: [0.84, 0, 1.6], q: qL, jitter: 0 });
+  b.add(bolt, CREAM, { p: [-0.84, 0, 1.6], q: qR, jitter: 0 });
+  // star on the top of the barrel
+  const star2 = new THREE.ExtrudeGeometry(starShape(0.38, 0.17), { depth: 0.05, bevelEnabled: false });
+  b.add(star2, CREAM, { p: [0, 0.85, 1.6], r: [-Math.PI / 2, 0, 0], jitter: 0 });
+  const bm = solidMesh(b.build(), 'barrelMesh');
+  barrel.add(bm);
+  // muzzle glow: bright ring at the lip + a short flare cone
+  const ring = ni(rampGeo(new THREE.RingGeometry(0.55, 1.45, 24, 2), (x, y) => { const d = Math.hypot(x, y); return d < 1.15 ? 1 : Math.max(0, 1 - (d - 1.15) / 0.3); }));
+  const flare = ni(rampGeo(new THREE.CylinderGeometry(0.95, 0.72, 0.55, 12, 1, true), (x, y) => (y < 0 ? 0.55 : 0)));
+  flare.rotateX(Math.PI / 2); flare.translate(0, 0, 0.28);
+  const glow = glowChild(mergeGeometries([ring, flare]), 'glow', '#FFD23D', 0.85);
+  glow.position.z = LM + 0.02;
+  barrel.add(glow);
+  g.add(barrel);
+
+  const PZ = -2.35;
+  g.add(padMesh(1.0, '#3DF2E0', DECK + 0.01));
+  g.getObjectByName('pad').position.z = PZ;
+  g.updateMatrixWorld(true);
+  const mz = new THREE.Vector3(0, 0, LM).applyMatrix4(barrel.matrix);
+  g.userData = {
+    radius: 3.2, height: +(PIV[1] + Math.sin(PITCH) * LM + Math.cos(PITCH) * 1.12).toFixed(2),
+    padCenter: { x: 0, y: DECK + 0.01, z: PZ }, muzzle: P3(mz.toArray()),
+  };
+  return g;
 }
 
-function structExitPortal() {
-  const RR = 2.5, RT = 0.36;
-  const WH = '#F4F1EA', WH_D = '#D8D2C4', GOLD = '#FFC23D', GOLD_D = '#D9961A', GEM = hdr('#3DF2FF', 2.0);
-  return portal({
-    name: 'exitPortal', seed: 1011, RZ: -1.0, RY: 3.35, RR, RT, VR: 2.3, pr: 3.9, height: 7.0,
-    ST: WH, ST_D: WH_D, ST_L: '#FFFFFF', TOP: '#FBF8F0', CAP: GOLD, trim: GOLD, vortex: '#FFF3C4', rune: '#FFD23D', pad: '#FFE27A', runeN: 24, runeR: 2.8,
-    decoratePlatform(k) {
-      for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU + TAU / 16; k.add(new THREE.OctahedronGeometry(0.16, 0), i % 2 ? GEM : GOLD, { p: [Math.sin(a) * 4.02, 0.24, Math.cos(a) * 4.02], s: [1, 1.2, 1], jitter: 0 }); }
-    },
-    decorateRing(r) {
-      r.add(new THREE.TorusGeometry(RR, RT, 6, 24), (l, w, f) => (f % 6 < 2 ? WH_D : WH), { jitter: 0.04 });
-      r.add(new THREE.TorusGeometry(RR - RT * 0.55, 0.1, 4, 24), GOLD, { p: [0, 0, RT * 0.6], jitter: 0.03 });
-      r.add(new THREE.TorusGeometry(RR + RT * 0.8, 0.09, 4, 24), GOLD_D, { jitter: 0.03 });
-      for (let i = 0; i < 16; i++) {
-        const a = (i / 16) * TAU, c = Math.cos(a), sn = Math.sin(a);
-        if (sn < -0.75) continue;
-        const len = i % 2 ? 0.55 : 0.95;
-        r.seg([c * (RR + RT * 0.7), sn * (RR + RT * 0.7), 0], [c * (RR + RT + len), sn * (RR + RT + len), 0], 0.14, 0, 4, i % 2 ? GOLD_D : GOLD, { jitter: 0.03 });
-      }
-      const star = new THREE.ExtrudeGeometry(starShape(0.62, 0.27), { depth: 0.18, bevelEnabled: false });
-      r.add(star, GOLD, { p: [0, RR + RT + 0.62, -0.09], jitter: 0.04 });
-      r.add(new THREE.OctahedronGeometry(0.18, 0), GEM, { p: [0, RR + RT + 0.62, 0.14], jitter: 0 });
-    },
+// ---------------------------------------------------------------------------
+// Amber obelisk — stand in its glow for a raw stat boost. Faceted glowing amber with a fossil raptor + ammonites inside.
+// ---------------------------------------------------------------------------
+function fossilRaptor(k, place0, c1, c2, sc = 1) {
+  const place = (geo, colr) => place0(geo.scale(sc, sc, 1), colr);
+  const bone = (a, b, w, col = c1) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy);
+    const geo = new THREE.BoxGeometry(len + w * 0.6, w, 0.03);
+    geo.rotateZ(Math.atan2(dy, dx)); geo.translate((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, 0);
+    place(geo, col);
+  };
+  const chain = (pts, w0, w1, col) => pts.slice(1).forEach((p, i) => bone(pts[i], p, w0 + ((w1 - w0) * i) / (pts.length - 2 || 1), col));
+  chain([[0.02, -0.06], [0.1, 0.08], [0.14, 0.22], [0.1, 0.33], [0.0, 0.41], [-0.1, 0.43]], 0.075, 0.05); // spine + neck (head thrown back)
+  chain([[0.02, -0.06], [-0.08, -0.2], [-0.12, -0.36], [-0.06, -0.5], [0.07, -0.57], [0.18, -0.56]], 0.07, 0.03); // tail curling down
+  const skull = new THREE.BoxGeometry(0.26, 0.1, 0.03); skull.rotateZ(0.35); skull.translate(-0.2, 0.48, 0); place(skull, c1);
+  bone([-0.1, 0.42], [-0.3, 0.38], 0.035, c2); // lower jaw
+  for (let i = 0; i < 4; i++) { const t = i / 3, x = 0.04 + t * 0.1, y = -0.02 + t * 0.2; bone([x, y], [x + 0.14, y - 0.07], 0.03, c2); } // ribs
+  chain([[0.02, -0.08], [0.2, -0.17], [0.1, -0.36], [0.25, -0.42]], 0.06, 0.04); // leg
+  bone([0.22, -0.4], [0.26, -0.33], 0.03, c2); // sickle claw
+  chain([[0.13, 0.22], [0.27, 0.17], [0.3, 0.06]], 0.04, 0.03, c2); // arm
+  const hip = new THREE.OctahedronGeometry(0.07, 0); hip.scale(1, 1, 0.3); hip.translate(0.03, -0.07, 0); place(hip, c2);
+}
+function ammonite(k, place, c1, c2, s) {
+  let prev = null;
+  for (let i = 0; i <= 14; i++) {
+    const th = (i / 14) * 3.2 * Math.PI, r = s * 0.06 * Math.exp(0.2 * th), p = [Math.cos(th) * r, Math.sin(th) * r];
+    if (prev) {
+      const dx = p[0] - prev[0], dy = p[1] - prev[1], len = Math.hypot(dx, dy), w = 0.025 + r * 0.22;
+      const geo = new THREE.BoxGeometry(len + w * 0.5, w, 0.03); geo.rotateZ(Math.atan2(dy, dx)); geo.translate((p[0] + prev[0]) / 2, (p[1] + prev[1]) / 2, 0);
+      place(geo, i % 2 ? c1 : c2);
+    }
+    prev = p;
+  }
+}
+function structAmberObelisk() {
+  const g = new THREE.Group(); g.name = 'amberObelisk';
+  const ST = '#7A7068', ST_D = '#5C544E', ST_L = '#948A80';
+  const AMB = hdr('#FFA326', 1.25), AMB_L = hdr('#FFC24A', 1.45), AMB_D = '#E07A12', AMB_DD = '#B85A0C', FOS = '#3A1E0C', FOS2 = '#52300F';
+  const k = new Kit(false, 1701);
+  // plinth + front flagstone
+  k.add(new THREE.BoxGeometry(2.5, 0.36, 2.5), (l) => (l.y > 0.17 ? ST_L : ST_D), { p: [0, 0.18, 0], jitter: 0.06 });
+  k.add(new THREE.BoxGeometry(1.95, 0.3, 1.95), (l) => (l.y > 0.14 ? ST : ST_D), { p: [0, 0.51, 0], r: [0, Math.PI / 4 * 0.12, 0], jitter: 0.06 });
+  k.add(new THREE.CylinderGeometry(1.2, 1.28, 0.12, 12), (l) => (l.y > 0.05 ? ST : ST_D), { p: [0, 0.06, 2.1], jitter: 0.06 });
+  // faceted amber shaft (flat facet faces +Z) + pyramid tip
+  const Y0 = 0.66, H = 3.05, RB = 1.0, RT = 0.62, TIP = 0.82, A30 = Math.cos(Math.PI / 6);
+  const facet = (l) => { const a = Math.atan2(l.x, l.z), f = ((Math.round(a / (Math.PI / 3)) % 6) + 6) % 6; return [AMB_L, AMB, AMB_D, AMB, AMB_L, AMB_D][f]; };
+  k.add(new THREE.CylinderGeometry(RT, RB, H, 6, 1), (l) => (Math.abs(l.y) > H / 2 - 0.01 ? AMB_DD : facet(l)), { p: [0, Y0 + H / 2, 0], r: [0, Math.PI / 6, 0], jitter: 0.04 });
+  k.add(new THREE.ConeGeometry(RT, TIP, 6, 1), (l) => facet(l) === AMB_D ? AMB : AMB_L, { p: [0, Y0 + H + TIP / 2, 0], r: [0, Math.PI / 6, 0], jitter: 0.04 });
+  // fossil silhouettes lying just inside the facets (read as "seen through the amber")
+  const tilt = Math.atan(((RB - RT) * A30) / H);
+  const onFacet = (ang, yc) => (geo, colr) => {
+    const d = (RB - ((RB - RT) * (yc - Y0)) / H) * A30 + 0.012;
+    k.add(geo, colr, { p: [Math.sin(ang) * d, yc, Math.cos(ang) * d], r: [-tilt, ang, 0], order: 'YXZ', jitter: 0 });
+  };
+  fossilRaptor(k, onFacet(0, 2.2), FOS, FOS2, 1.3);
+  fossilRaptor(k, onFacet(Math.PI, 2.1), FOS, FOS2, 1.2);
+  ammonite(k, onFacet((2 * Math.PI) / 3, 2.6), FOS, FOS2, 1.0);
+  ammonite(k, onFacet((-2 * Math.PI) / 3, 1.6), FOS2, FOS, 0.85);
+  ammonite(k, onFacet(Math.PI / 3, 1.3), FOS, FOS2, 0.7);
+  ammonite(k, onFacet(-Math.PI / 3, 2.9), FOS2, FOS, 0.6);
+  // amber shards around the base
+  [[1.05, 0.72, 0.8, 0.45], [-1.0, 0.72, 0.55, 0.35], [0.7, 0.72, -1.0, 0.3], [-1.55, 0.05, 1.3, 0.4], [1.6, 0.05, -1.2, 0.34]].forEach(([x, y, z, s], i) => {
+    const dir = [x * 0.3, 1, z * 0.3];
+    k.add(new THREE.OctahedronGeometry(s * 0.5, 0), i % 2 ? AMB : AMB_L, { p: [x, y + s * 0.4, z], q: qUp(dir), s: [0.7, 1.9, 0.7], jitter: 0.05 });
   });
+  g.add(solidMesh(k.build(), 'obelisk'));
+  // glow: soft outer shell (bright at the base, fading up) + halo on the plinth
+  const shell = ni(rampGeo(new THREE.CylinderGeometry(RT * 1.18, RB * 1.16, H, 6, 1, true), (x, y) => (y < 0 ? 0.75 : 0.25)));
+  shell.rotateY(Math.PI / 6); shell.translate(0, Y0 + H / 2, 0);
+  const halo = ni(rampGeo(new THREE.RingGeometry(RB * 0.9, 1.7, 24, 1), (x, y) => (Math.hypot(x, y) < 1.1 ? 1 : 0)));
+  halo.rotateX(-Math.PI / 2); halo.translate(0, Y0 + 0.01, 0);
+  g.add(glowChild(mergeGeometries([shell, halo]), 'glow', '#FFB02E', 0.6));
+  g.add(padMesh(1.1, '#FFB02E', 0.13));
+  g.getObjectByName('pad').position.z = 2.1;
+  g.userData = { radius: 2.8, height: +(Y0 + H + TIP).toFixed(2), padCenter: { x: 0, y: 0.13, z: 2.1 } };
+  return g;
 }
 
-function structMoai() {
-  const g = new THREE.Group(); g.name = 'moai';
-  const ST = '#7E858F', ST_D = '#5E646E', ST_L = '#9AA1AA', MOSS = '#6E8A4A';
-  const stone = (l) => { const h = hash3(l.x, l.y, l.z, 4); return h < 0.14 ? MOSS : h < 0.55 ? ST : ST_L; };
-  const k = new Kit(false, 1101);
-  k.add(new THREE.BoxGeometry(3.4, 0.4, 4.6), (l) => (l.y > 0.19 ? ST_L : ST_D), { p: [0, 0.2, 0.2], jitter: 0.06 });
-  k.add(new THREE.BoxGeometry(2.2, 0.2, 0.6), ST_D, { p: [0, 0.1, 2.75] });
-  k.add(new THREE.BoxGeometry(1.4, 3.1, 1.2, 2, 5, 2), stone, { p: [0, 1.95, -0.9], jitter: 0.06 });
-  k.add(new THREE.BoxGeometry(1.5, 0.34, 0.5), ST_L, { p: [0, 3.02, -0.3] });
-  for (const s of sides) k.add(new THREE.BoxGeometry(0.42, 0.26, 0.1), '#24262B', { p: [0.36 * s, 2.72, -0.27], jitter: 0 });
-  k.add(new THREE.CylinderGeometry(0.12, 0.3, 1.2, 4), ST, { p: [0, 2.25, -0.18], r: [-0.18, Math.PI / 4, 0] });
-  k.add(new THREE.BoxGeometry(0.8, 0.14, 0.2), ST_D, { p: [0, 1.5, -0.24] });
-  k.add(new THREE.BoxGeometry(0.9, 0.12, 0.22), ST_L, { p: [0, 1.36, -0.24] });
-  k.add(new THREE.BoxGeometry(1.2, 0.5, 0.4), ST, { p: [0, 1.0, -0.32] });
-  for (const s of sides) k.add(new THREE.BoxGeometry(0.16, 1.3, 0.4), ST_D, { p: [0.76 * s, 2.35, -0.95] });
-  k.add(new THREE.CylinderGeometry(0.62, 0.66, 0.55, 10), (l) => (l.y > 0.26 ? '#B35A3E' : '#9A4A32'), { p: [0, 3.78, -0.95], jitter: 0.05 });
-  g.add(solidMesh(k.build(), 'statue'));
-  const eyes = glowChild(mergeGeometries(sides.map((s) => rampGeo(new THREE.BoxGeometry(0.34, 0.16, 0.04).translate(0.36 * s, 2.72, -0.2), () => 1))), 'eyes', '#3DF2FF', 0.95);
-  g.add(eyes);
-  const pad = padMesh(1.1, '#3DF2FF', 0.41); pad.position.z = 1.35; g.add(pad);
-  g.userData = { radius: 2.8, height: 4.1, padCenter: { x: 0, y: 0.41, z: 1.35 } };
+// ---------------------------------------------------------------------------
+// Fossil gate — a giant fossil T-rex skull; its open jaws are the doorway. Walking in awakens a Fossil Echo.
+// ---------------------------------------------------------------------------
+function structFossilGate() {
+  const g = new THREE.Group(); g.name = 'fossilGate';
+  const BONE = '#EADFC6', BONE_L = '#F6EEDB', BONE_D = '#CDBD9A', CRACK = '#8A7454', WEATH = '#9A8566', WEATH_D = '#6E5E48', SOCK = '#1E140C', ROCK = '#5E5246', ROCK_L = '#74665A';
+  const bone = (l, w) => { if (w.y < 0.7) return hash3(l.x, l.y, l.z, 3) < 0.5 ? WEATH_D : WEATH; if (w.y < 1.4) return hash3(l.x, l.y, l.z, 3) < 0.4 ? WEATH : BONE_D; const h = hash3(l.x, l.y, l.z, 5); return h < 0.12 ? CRACK : h < 0.4 ? BONE_D : h < 0.85 ? BONE : BONE_L; };
+  const k = new Kit(false, 1801);
+  // upper jaw / snout (doorway lintel), tapering to the front
+  const SN_Y = 3.85, SN_H = 1.9, SN_Z0 = -1.4, SN_Z1 = 3.2, SN_W = 4.4, SN_FX = 0.68;
+  k.add(taperBox(SN_W, SN_H, SN_Z1 - SN_Z0, SN_FX, 0.62), bone, { p: [0, SN_Y + SN_H / 2, (SN_Z0 + SN_Z1) / 2] });
+  const hw = (z) => (SN_W / 2) * (1 - (1 - SN_FX) * ((z - SN_Z0) / (SN_Z1 - SN_Z0)));
+  k.add(new THREE.IcosahedronGeometry(1, 0), bone, { p: [0, 4.35, 3.05], s: [1.45, 0.62, 0.55] }); // rounded snout tip
+  // cranium dome
+  const CR = [0, 5.6, -2.0], CRR = [2.6, 1.6, 2.2];
+  k.add(new THREE.IcosahedronGeometry(1, 1), bone, { p: CR, s: CRR, jitter: 0.06 });
+  k.add(new THREE.BoxGeometry(1.2, 0.5, 2.4), bone, { p: [0, 7.0, -2.6], r: [0.15, 0, 0] }); // sagittal crest
+  // cheek pillars (jaw hinges) + lower jaw + chin
+  for (const s of sides) {
+    k.add(new THREE.CylinderGeometry(0.42, 0.62, 4.0, 6), bone, { p: [2.3 * s, 2.15, -1.6], s: [1, 1, 1.7], r: [0, 0, 0.07 * s], jitter: 0.06 });
+    k.add(new THREE.IcosahedronGeometry(0.6, 0), bone, { p: [2.25 * s, 0.75, -1.3], s: [1.1, 0.9, 1.6] }); // jaw hinge knuckle
+    k.add(taperBox(0.85, 1.05, 5.3, 0.8, 0.7), bone, { p: [1.95 * s, 0.5, 0.25] });
+  }
+  k.add(new THREE.BoxGeometry(3.7, 0.3, 0.8), bone, { p: [0, 0.15, 2.55] });
+  k.add(new THREE.BoxGeometry(3.9, 4.7, 0.5), (l, w) => (w.y < 0.7 ? WEATH_D : w.y < 1.4 ? WEATH : BONE_D), { p: [0, 2.35, -2.25] }); // throat / back wall behind the vortex
+  // teeth
+  const tooth = (p, h, r, down, lean = 0) => k.add(new THREE.ConeGeometry(r, h, 5, 1), (l) => (l.y * (down ? -1 : 1) > h * 0.1 ? BONE_L : BONE_D), { p: [p[0], p[1] + (down ? -h / 2 : h / 2), p[2]], r: [down ? Math.PI : 0, 0, lean], jitter: 0.04 });
+  for (const s of sides) {
+    [-0.55, 0.1, 0.75, 1.4, 2.05, 2.6].forEach((z, i) => tooth([(hw(z) - 0.28) * s, SN_Y + 0.02, z], 0.95 - i * 0.06, 0.2, true, 0.08 * s));
+    [-0.1, 0.55, 1.2, 1.85].forEach((z, i) => tooth([1.9 * s, 0.98, z], 0.8 - i * 0.07, 0.17, false, -0.12 * s));
+    tooth([1.35 * s, 0.28, 2.55], 0.38, 0.12, false);
+    tooth([0.9 * s, 0.28, 2.7], 0.3, 0.1, false);
+  }
+  [-1.05, -0.35, 0.35, 1.05].forEach((x) => tooth([x, SN_Y + 0.05, 3.0], 0.7, 0.17, true));
+  // eye sockets, brow bosses, fenestrae, nostrils (dark)
+  const eyes = [];
+  for (const s of sides) {
+    const { p, n } = ellipsoidPt(CR, CRR, [1.6 * s, 0.35, 1.25]);
+    k.add(new THREE.IcosahedronGeometry(1, 1), SOCK, { p: p.toArray(), q: qUp(n), s: [0.58, 0.34, 0.7], jitter: 0 });
+    k.add(new THREE.ConeGeometry(0.4, 0.7, 5), BONE_D, { p: p.clone().add(new THREE.Vector3(0.25 * s, 0.75, -0.25)).toArray(), r: [-0.3, 0, -0.5 * s] });
+    k.add(new THREE.BoxGeometry(1.2, 0.3, 0.6), bone, { p: p.clone().add(new THREE.Vector3(-0.1 * s, 0.55, 0.12)).toArray(), r: [0.3, 0.45 * s, 0.15 * s] });
+    eyes.push(p.clone().addScaledVector(n, -0.02));
+    k.add(new THREE.IcosahedronGeometry(1, 0), SOCK, { p: [hw(0.7) * s, 4.6, 0.7], s: [0.2, 0.42, 0.95], jitter: 0 });
+    k.add(new THREE.IcosahedronGeometry(1, 0), SOCK, { p: [hw(2.2) * s * 0.98, 4.4, 2.2], s: [0.15, 0.26, 0.4], jitter: 0 });
+    k.add(new THREE.IcosahedronGeometry(1, 0), SOCK, { p: [0.55 * s, 4.98, 2.75], s: [0.3, 0.1, 0.38], jitter: 0 });
+  }
+  // hairline cracks (dark zigzags) over the snout and dome
+  const cr = mulberry32(1802);
+  for (let c = 0; c < 5; c++) {
+    let x = (cr() - 0.5) * 2.4, z = -0.8 + cr() * 3.2;
+    for (let i = 0; i < 3; i++) {
+      const nx = x + (cr() - 0.5) * 0.8, nz = z + 0.35 + cr() * 0.3;
+      const y = (zz) => SN_Y + SN_H * (1 - 0.38 * ((zz - SN_Z0) / (SN_Z1 - SN_Z0))) + 0.01;
+      if (Math.abs(nx) > hw(nz) - 0.2) break;
+      k.seg([x, y(z), z], [nx, y(nz), nz], 0.035, 0.035, 3, CRACK, { jitter: 0 });
+      x = nx; z = nz;
+    }
+  }
+  // weathered rubble half-burying the base
+  const rr = mulberry32(1803);
+  [[2.9, -2.8], [-3.0, -2.4], [3.1, 0.3], [-3.2, 0.8], [2.4, 2.6], [-2.5, 2.9], [0.6, -3.3], [-1.3, -3.2], [3.3, -1.2]].forEach(([x, z], i) => {
+    k.add(new THREE.DodecahedronGeometry(0.45 + rr() * 0.35, 0), (l) => (l.y > 0.1 ? ROCK_L : ROCK), { p: [x, 0.1, z], s: [1.3, 0.7, 1.1], r: [rr(), rr() * TAU, 0], jitter: 0.08 });
+  });
+  g.add(solidMesh(k.build(), 'skull'));
+  // glowing amber eye lights
+  const eg = eyes.map((p) => {
+    const a = ni(rampGeo(new THREE.IcosahedronGeometry(0.22, 1), () => 1)); a.translate(p.x, p.y, p.z);
+    const b = ni(rampGeo(new THREE.IcosahedronGeometry(0.4, 1), () => 0.25)); b.translate(p.x, p.y, p.z);
+    return mergeGeometries([a, b]);
+  });
+  g.add(glowChild(mergeGeometries(eg), 'eyes', '#FFB02E', 0.95));
+  // vortex disc filling the mouth (the game swaps in an animated shader)
+  const VY = 2.1, VZ = -1.2;
+  const vortex = new THREE.Mesh(new THREE.CircleGeometry(1.8, 40), new THREE.MeshBasicMaterial({ color: '#FF9A2E', side: THREE.DoubleSide }));
+  vortex.name = 'vortex'; vortex.position.set(0, VY, VZ);
+  g.add(vortex);
+  const PZ = 0.9;
+  g.add(padMesh(1.25, '#FFB02E', 0.05));
+  g.getObjectByName('pad').position.z = PZ;
+  g.userData = { radius: 3.2, height: 7.4, padCenter: { x: 0, y: 0.05, z: PZ }, vortexCenter: { x: 0, y: VY, z: VZ } };
   return g;
 }
 
@@ -2491,7 +2756,7 @@ function structPylon() {
   return g;
 }
 
-const STRUCTURE_BUILDERS = { bossPortal: structBossPortal, exitPortal: structExitPortal, moai: structMoai, totem: structTotem, greed: structGreed, pylon: structPylon };
+const STRUCTURE_BUILDERS = { meteorCrater: structMeteorCrater, launchCannon: structLaunchCannon, amberObelisk: structAmberObelisk, fossilGate: structFossilGate, totem: structTotem, greed: structGreed, pylon: structPylon };
 export const STRUCTURE_KINDS = Object.keys(STRUCTURE_BUILDERS);
 export function buildStructure(kind) {
   const fn = STRUCTURE_BUILDERS[kind];

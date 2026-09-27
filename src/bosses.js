@@ -29,6 +29,8 @@ export class Boss {
     this.trail = []; this.segs = null;
     this.clock = 0;
     this.dmg = this.E.dmg[i];
+    this.gapK = opts.gapK || 1;       // >1: attacks come slower (Fossil Echoes)
+    this.isFossil = !!opts.fossil;
   }
 
   get alive() { const s = this.E.state[this.i]; return s === 1 || s === 3; }
@@ -66,7 +68,7 @@ export class Boss {
       if (!this.run || this.run(dt)) {
         this.run = null; this.mode = 'chase';
         const [a, b] = this.def.gap;
-        this.cool = rnd(a, b) * (this.phase === 2 ? 0.65 : 1);
+        this.cool = rnd(a, b) * (this.phase === 2 ? 0.65 : 1) * this.gapK;
       }
     }
     // vertical control (bosses own their y offset)

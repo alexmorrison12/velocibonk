@@ -6,7 +6,7 @@
 import * as esbuild from 'esbuild';
 import fs from 'fs';
 
-const SITE = 'https://alexmorrison12.github.io/velocibonk/';
+const SITE = 'https://alexmorrison12.github.io/velocismash/';
 const t0 = Date.now();
 const result = await esbuild.build({
   entryPoints: ['src/main.js'],
@@ -37,7 +37,7 @@ const meta = [
   `<meta name="description" content="${desc}">`,
   '<meta name="theme-color" content="#140f2e">',
   '<meta property="og:type" content="website">',
-  '<meta property="og:title" content="VELOCIBONK — speed is damage">',
+  '<meta property="og:title" content="VELOCISMASH — speed is damage">',
   `<meta property="og:description" content="${desc}">`,
   `<meta property="og:url" content="${SITE}">`,
   fs.existsSync('docs/og.jpg') ? `<meta property="og:image" content="${SITE}og.jpg">\n<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">` : '',

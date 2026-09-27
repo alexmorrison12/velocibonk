@@ -288,7 +288,7 @@ export class Player {
     if (P.armR) P.armR.rotation.x = this.onGround ? legSwing * 0.6 : -1.2;
     if (P.tail) { P.tail.rotation.y = Math.sin(ph) * 0.25 * run + this.lean * 0.6; P.tail.rotation.x = this.onGround ? -0.05 : 0.3; }
     if (P.head) P.head.rotation.x = Math.sin(ph * 2) * 0.05 * run + (this.slamming ? 0.4 : 0);
-    // bat: rests on the shoulder, whips around in a full circle when the Bonker fires
+    // bat: rests on the shoulder, whips around in a full circle when the Slugger fires
     if (P.batPivot) {
       this.swingT = Math.min(1, this.swingT + dt / 0.26);
       if (this.swingT < 1) {

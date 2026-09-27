@@ -1,13 +1,13 @@
 // Persistent progression: quests ("do X → unlock Y"), characters, perks and island unlocks.
 // Everything unlocked is derived from completed quests, so there is one source of truth.
 
-const KEY = 'velocibonk.progress';
+const KEY = 'velocismash.progress';
 
 export const BASE_WEAPONS = ['bat', 'pebble', 'saw', 'zap', 'banana', 'aura'];
 export const BASE_TOMES = ['might', 'haste', 'multishot', 'size', 'zoomies', 'magnet', 'vitality', 'regen'];
 
 export const CHARACTERS = {
-  rex:    { name: 'REX', title: 'The Bonker', start: ['bat', 'pebble'], passive: '+15% speed→damage conversion', stats: { momentum: 0.15 } },
+  rex:    { name: 'REX', title: 'The Smasher', start: ['bat', 'pebble'], passive: '+15% speed→damage conversion', stats: { momentum: 0.15 } },
   zappy:  { name: 'ZAPPY', title: 'Storm Caller', start: ['zap', 'pebble'], passive: '+10% crit chance', stats: { crit: 0.1 } },
   nana:   { name: 'NANA', title: 'Banana Bandit', start: ['banana', 'bat'], passive: '+1 projectile', stats: { multishot: 1 } },
   blaze:  { name: 'BLAZE', title: 'Hot Wheels', start: ['hotfeet', 'bat'], passive: '+15% move speed', stats: { moveSpeed: 0.15 } },
@@ -23,6 +23,7 @@ export const PERKS = {
   gold15:  { name: 'Gold Digger', desc: '+15% gold' },
   xp10:    { name: 'Quick Study', desc: '+10% XP' },
   bossdmg: { name: 'Boss Slayer', desc: '+20% damage to bosses' },
+  boonplus: { name: 'Bone Collector', desc: 'Fossil Boons offer 4 choices' },
 };
 
 // stat: a per-run counter the game increments; 'max' stats keep the best value seen this run.
@@ -30,28 +31,29 @@ export const PERKS = {
 export const QUESTS = [
   { id: 'clear1', cat: 'ISLANDS', name: 'Island Hopper', desc: 'Defeat the Tiki Titan and clear Palm Paradise', stat: 'cleared', goal: 1, reward: { kind: 'island', id: 2, name: 'Frostbite Peaks' } },
   { id: 'clear2', cat: 'ISLANDS', name: 'Cold Blooded', desc: 'Defeat the Yeti King and clear Frostbite Peaks', stat: 'cleared', goal: 2, reward: { kind: 'island', id: 3, name: 'Sunscorch Dunes' }, bonus: { kind: 'weapon', id: 'frost', name: 'Frost Nova' } },
-  { id: 'clear3', cat: 'ISLANDS', name: 'Dune Bonker', desc: 'Defeat the Dune Devourer and clear Sunscorch Dunes', stat: 'cleared', goal: 3, reward: { kind: 'island', id: 4, name: 'Gloomhollow' } },
+  { id: 'clear3', cat: 'ISLANDS', name: 'Dune Smasher', desc: 'Defeat the Dune Devourer and clear Sunscorch Dunes', stat: 'cleared', goal: 3, reward: { kind: 'island', id: 4, name: 'Gloomhollow' } },
   { id: 'clear4', cat: 'ISLANDS', name: 'Grave Robber', desc: 'Defeat the Gravelord and clear Gloomhollow', stat: 'cleared', goal: 4, reward: { kind: 'island', id: 5, name: 'Magma Core' }, bonus: { kind: 'weapon', id: 'blackhole', name: 'Black Hole' } },
   { id: 'clear5', cat: 'ISLANDS', name: 'VELOCIGOD', desc: 'Slay Magmaw and conquer the Archipelago', stat: 'cleared', goal: 5, reward: { kind: 'character', id: 'goldie', name: 'GOLDIE' } },
 
-  { id: 'speed100', cat: 'MOVEMENT', name: 'Speed Freak', desc: 'Reach 100 km/h', stat: 'kmh', goal: 100, reward: { kind: 'tome', id: 'momentum', name: 'Momentum Tome' } },
+  { id: 'speed100', cat: 'MOVEMENT', name: 'Speed Freak', desc: 'Reach 100 km/h', stat: 'kmh', goal: 100, reward: { kind: 'tome', id: 'momentum', name: 'Momentum Charm' } },
   { id: 'speed180', cat: 'MOVEMENT', name: 'Terminal Velocity', desc: 'Reach 180 km/h', stat: 'kmh', goal: 180, reward: { kind: 'character', id: 'blaze', name: 'BLAZE' } },
-  { id: 'bhop25', cat: 'MOVEMENT', name: 'Bunny Mode', desc: 'Chain 25 bunny hops', stat: 'bhop', goal: 25, reward: { kind: 'tome', id: 'springs', name: 'Springs Tome' } },
+  { id: 'bhop25', cat: 'MOVEMENT', name: 'Bunny Mode', desc: 'Chain 25 bunny hops', stat: 'bhop', goal: 25, reward: { kind: 'tome', id: 'springs', name: 'Springs Charm' } },
   { id: 'air5', cat: 'MOVEMENT', name: 'Frequent Flyer', desc: 'Stay airborne for 5 seconds', stat: 'air', goal: 5, reward: { kind: 'weapon', id: 'lance', name: 'Sonic Lance' } },
-  { id: 'slam15', cat: 'MOVEMENT', name: 'Meteor Strike', desc: 'Hit 15 enemies with a single slam', stat: 'slamHits', goal: 15, reward: { kind: 'weapon', id: 'meteor', name: 'Sky Bonk' } },
+  { id: 'slam15', cat: 'MOVEMENT', name: 'Meteor Strike', desc: 'Hit 15 enemies with a single slam', stat: 'slamHits', goal: 15, reward: { kind: 'weapon', id: 'meteor', name: 'Sky Smash' } },
   { id: 'ram150', cat: 'MOVEMENT', name: 'Wrecking Ball', desc: 'RAM 150 enemies in one run', stat: 'rams', goal: 150, reward: { kind: 'weapon', id: 'quake', name: 'Quake Boots' } },
 
-  { id: 'kills1000', cat: 'COMBAT', name: 'Horde Hunter', desc: 'Bonk 1,000 enemies in one run', stat: 'kills', goal: 1000, reward: { kind: 'weapon', id: 'hotfeet', name: 'Hot Feet' } },
-  { id: 'life10k', cat: 'COMBAT', name: 'Bonk Master', desc: 'Bonk 10,000 enemies in total', stat: 'lifeKills', goal: 10000, scope: 'life', reward: { kind: 'tome', id: 'crit', name: 'Crit Tome' } },
-  { id: 'combo250', cat: 'COMBAT', name: 'Combo King', desc: 'Reach a 250 bonk combo', stat: 'combo', goal: 250, reward: { kind: 'tome', id: 'luck', name: 'Luck Tome' } },
+  { id: 'kills1000', cat: 'COMBAT', name: 'Horde Hunter', desc: 'Smash 1,000 enemies in one run', stat: 'kills', goal: 1000, reward: { kind: 'weapon', id: 'hotfeet', name: 'Hot Feet' } },
+  { id: 'life10k', cat: 'COMBAT', name: 'Smash Master', desc: 'Smash 10,000 enemies in total', stat: 'lifeKills', goal: 10000, scope: 'life', reward: { kind: 'tome', id: 'crit', name: 'Crit Charm' } },
+  { id: 'combo250', cat: 'COMBAT', name: 'Combo King', desc: 'Reach a 250 smash combo', stat: 'combo', goal: 250, reward: { kind: 'tome', id: 'luck', name: 'Luck Charm' } },
   { id: 'zap10', cat: 'COMBAT', name: 'Chain Reaction', desc: 'Hit 10 enemies with one Zeus Juice bolt', stat: 'zapChain', goal: 10, reward: { kind: 'character', id: 'zappy', name: 'ZAPPY' } },
   { id: 'banana12', cat: 'COMBAT', name: 'Banana Split', desc: 'Hit 12 enemies with one Bananarang throw', stat: 'bananaHits', goal: 12, reward: { kind: 'character', id: 'nana', name: 'NANA' } },
-  { id: 'dmg1m', cat: 'COMBAT', name: 'Big Numbers', desc: 'Deal 1,000,000 damage in one run', stat: 'damage', goal: 1e6, reward: { kind: 'tome', id: 'wisdom', name: 'Wisdom Tome' } },
-  { id: 'chonk', cat: 'COMBAT', name: 'Chonk Bonker', desc: 'Defeat King Chonk', stat: 'chonks', goal: 1, reward: { kind: 'shrine', id: 'greed', name: 'Greed Idols' } },
+  { id: 'dmg1m', cat: 'COMBAT', name: 'Big Numbers', desc: 'Deal 1,000,000 damage in one run', stat: 'damage', goal: 1e6, reward: { kind: 'tome', id: 'wisdom', name: 'Wisdom Charm' } },
+  { id: 'chonk', cat: 'COMBAT', name: 'Chonk Smasher', desc: 'Defeat King Chonk', stat: 'chonks', goal: 1, reward: { kind: 'shrine', id: 'greed', name: 'Greed Idols' } },
   { id: 'tank', cat: 'COMBAT', name: 'Built Different', desc: 'Take 1,000 damage in one run', stat: 'taken', goal: 1000, reward: { kind: 'character', id: 'tank', name: 'TANK' } },
-  { id: 'nohit', cat: 'COMBAT', name: 'Untouchable', desc: 'Go 90 seconds without getting hit (after 1:00)', stat: 'nohit', goal: 90, reward: { kind: 'tome', id: 'armor', name: 'Armor Tome' } },
+  { id: 'nohit', cat: 'COMBAT', name: 'Untouchable', desc: 'Go 90 seconds without getting hit (after 1:00)', stat: 'nohit', goal: 90, reward: { kind: 'tome', id: 'armor', name: 'Armor Charm' } },
   { id: 'speedrun', cat: 'COMBAT', name: 'Speedrunner', desc: 'Defeat a final boss with 3:00 or more on the clock', stat: 'fastBoss', goal: 1, reward: { kind: 'perk', id: 'bossdmg', name: 'Boss Slayer' } },
 
+  { id: 'fossil1', cat: 'EXPLORATION', name: 'Paleontologist', desc: 'Shatter a Fossil Echo at a Fossil Gate', stat: 'fossils', goal: 1, reward: { kind: 'perk', id: 'boonplus', name: 'Bone Collector' } },
   { id: 'chests6', cat: 'EXPLORATION', name: 'Treasure Hunter', desc: 'Open 6 chests in one run', stat: 'chests', goal: 6, reward: { kind: 'perk', id: 'gold20', name: 'Head Start' } },
   { id: 'shrines5', cat: 'EXPLORATION', name: 'Pilgrim', desc: 'Use 5 shrines in one run', stat: 'shrines', goal: 5, reward: { kind: 'perk', id: 'reroll', name: 'Second Opinion' } },
   { id: 'trials3', cat: 'EXPLORATION', name: 'Trial by Fire', desc: 'Win 3 Challenge Totem trials', stat: 'lifeTrials', goal: 3, scope: 'life', reward: { kind: 'perk', id: 'revive', name: 'Second Wind' } },

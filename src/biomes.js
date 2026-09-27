@@ -7,7 +7,7 @@ const C = (hex) => hex; // (colors stay as hex strings; THREE.Color parses them)
 
 export const ISLANDS = [
   {
-    n: 1, id: 'tropical', name: 'PALM PARADISE', subtitle: 'Sun, sand and a lot of bonking',
+    n: 1, id: 'tropical', name: 'PALM PARADISE', subtitle: 'Sun, sand and a lot of smashing',
     boss: 'tiki', bossName: 'TIKI TITAN', bossTitle: 'GUARDIAN OF PALM PARADISE', miniName: 'KING CHONK',
     sky: { top: C('#3E7BE0'), mid: C('#8EC8FF'), horizon: C('#FFD6A8'), sun: C('#FFF3C4'), sunDir: [-0.55, 0.62, -0.56], sunSize: 900, stars: 0, aurora: 0 },
     fog: { color: C('#F4D8B8'), near: 80, far: 460 },

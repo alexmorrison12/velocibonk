@@ -17,7 +17,7 @@ const HMIN = -9, HMAX = 56;           // height texture encoding range
 const _c = new THREE.Color(), _c2 = new THREE.Color();
 const col = (hex) => new THREE.Color(hex);
 
-export const SHRINE_KINDS = ['blessing', 'moai', 'totem', 'greed', 'pylon'];
+export const SHRINE_KINDS = ['blessing', 'amber', 'totem', 'greed', 'pylon'];
 
 export class World {
   constructor(scene) {
@@ -28,7 +28,7 @@ export class World {
     this.colliders = [];
     this.colGrid = new Map();
     this.pads = []; this.chests = []; this.shrines = [];
-    this.bossPortal = null; this.exitPortal = null;
+    this.meteor = null; this.cannon = null; this.fossilGate = null;
     this.time = 0;
     this.island = ISLANDS[0];
     this.sunDir = new THREE.Vector3(-0.55, 0.62, -0.56).normalize();
@@ -80,7 +80,7 @@ export class World {
     }
     this.colliders.length = 0; this.colGrid.clear();
     this.pads.length = 0; this.chests.length = 0; this.shrines.length = 0;
-    this.bossPortal = null; this.exitPortal = null;
+    this.meteor = null; this.cannon = null; this.fossilGate = null;
 
     this._applySky();
     this._buildClouds();
@@ -499,7 +499,7 @@ export class World {
   _structure(kind) {
     let obj = null;
     if (kind === 'blessing') obj = M.buildShrine();
-    else if (typeof M.buildStructure === 'function') { try { obj = M.buildStructure(kind); } catch { obj = null; } }
+    else if (typeof M.buildStructure === 'function') { try { obj = M.buildStructure(kind === 'amber' ? 'amberObelisk' : kind); } catch (e) { console.warn('structure', kind, e); obj = null; } }
     if (!obj) obj = M.buildShrine(); // art fallback
     return obj;
   }
@@ -520,14 +520,23 @@ export class World {
       this._landmarks.push(p);
       return obj;
     };
-    // boss portal (terrain was flattened for it)
+    // the meteor crater that summons the final boss (terrain was flattened for it)
     if (this._portalSite) {
       const s = this._portalSite;
       const p = { x: s.x, z: s.z, y: this.heightAt(s.x, s.z) };
-      const obj = add(this._structure('bossPortal'), p, Math.atan2(-s.x, -s.z));
-      this._vortex(obj, '#7A1CFF', '#FF2A4A');
-      this.bossPortal = { ...p, obj, state: 'idle', progress: 0 };
-      this._landmarks.push({ x: p.x, z: p.z }, { x: p.x + 6, z: p.z }, { x: p.x - 6, z: p.z });
+      const obj = add(this._structure('meteorCrater'), p, Math.atan2(-s.x, -s.z));
+      this.meteor = { ...p, ...this._padWorld(obj, p), obj, state: 'idle', progress: 0, blast: 0 };
+      this._landmarks.push({ x: p.x, z: p.z }, { x: p.x + 7, z: p.z }, { x: p.x - 7, z: p.z }, { x: p.x, z: p.z + 7 }, { x: p.x, z: p.z - 7 });
+    }
+    // the fossil gate: an optional echo-boss challenge, well away from spawn and the crater
+    {
+      const p = this._randomLand(mulberry32(this.seed ^ 0xf055), { minR: 55, maxR: PLAY_R * 0.85, avoid: 40, minSlope: 0.9 });
+      if (p) {
+        const obj = add(this._structure('fossilGate'), p, Math.atan2(-p.x, -p.z));
+        this._vortex(obj, '#FFB020', '#FFF1D0');
+        this.fossilGate = { ...p, ...this._padWorld(obj, p), obj, state: 'idle', progress: 0 };
+        this._landmarks.push({ x: p.x + 5, z: p.z }, { x: p.x - 5, z: p.z }, { x: p.x, z: p.z + 5 }, { x: p.x, z: p.z - 5 });
+      }
     }
     const nrm = new THREE.Vector3();
     for (let i = 0; i < 20; i++) {
@@ -549,7 +558,7 @@ export class World {
       const obj = add(M.buildChest(), p, rand() * Math.PI * 2);
       this.chests.push({ x: p.x, z: p.z, y: p.y, opened: false, obj, openT: 0 });
     }
-    const kinds = ['blessing', 'blessing', 'blessing', 'moai', 'moai', 'moai', 'totem', 'totem', 'pylon', 'pylon'];
+    const kinds = ['blessing', 'blessing', 'blessing', 'amber', 'amber', 'amber', 'totem', 'totem', 'pylon', 'pylon'];
     if (this.opts.greed) kinds.push('greed');
     for (const kind of kinds) {
       const p = this._randomLand(rand, { minR: 26, avoid: 22, minSlope: 0.86 }); if (!p) continue;
@@ -558,20 +567,56 @@ export class World {
     }
   }
 
-  spawnExitPortal(x, z) {
+  // world-space position of a structure's interaction pad
+  _padWorld(obj, p) {
+    const pc = obj.userData && obj.userData.padCenter;
+    if (!pc) return { px: p.x, pz: p.z };
+    obj.updateMatrixWorld(true);
+    const v = obj.localToWorld(new THREE.Vector3(pc.x, pc.y, pc.z));
+    return { px: v.x, pz: v.z };
+  }
+
+  // the launch cannon rises out of the ground where the final boss fell
+  spawnCannon(x, z) {
     let px = x, pz = z;
-    // nudge onto dry land if the boss died over liquid
-    for (let i = 0; i < 20 && this.heightAt(px, pz) < 0.5; i++) { px *= 0.9; pz *= 0.9; }
+    for (let i = 0; i < 20 && this.heightAt(px, pz) < 0.5; i++) { px *= 0.9; pz *= 0.9; } // nudge onto dry land
     const p = { x: px, z: pz, y: this.heightAt(px, pz) };
-    const obj = this._structure('exitPortal');
+    const obj = this._structure('launchCannon');
     obj.position.set(p.x, p.y, p.z);
-    obj.rotation.y = Math.atan2(-px, -pz);
+    obj.rotation.y = Math.atan2(-px, -pz); // barrel aims back across the island
     obj.traverse(o => { if (o.isMesh && !o.material.transparent) { o.castShadow = true; o.receiveShadow = true; } });
-    this._vortex(obj, '#1AE3FF', '#FFE14D');
-    obj.scale.setScalar(0.01);
     this.root.add(obj);
-    this.exitPortal = { ...p, obj, t: 0 };
-    return this.exitPortal;
+    this.cannon = { ...p, ...this._padWorld(obj, p), obj, t: 0, progress: 0, fired: false };
+    obj.scale.setScalar(0.01);
+    return this.cannon;
+  }
+
+  // world-space muzzle position + launch direction of the cannon
+  cannonMuzzle(out, dir) {
+    const c = this.cannon; if (!c) return false;
+    const o = c.obj, ud = o.userData || {};
+    const barrel = o.getObjectByName('barrel');
+    const pitch = barrel?.userData?.pitch ?? 0.7;
+    o.updateMatrixWorld(true);
+    const m = ud.muzzle || { x: 0, y: 4, z: 3 };
+    out.copy(o.localToWorld(new THREE.Vector3(m.x, m.y, m.z)));
+    const yaw = o.rotation.y;
+    dir.set(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)).normalize();
+    return true;
+  }
+
+  // a free treasure chest (Fossil Echo reward)
+  spawnFreeChest(x, z) {
+    const y = this.heightAt(x, z);
+    const obj = M.buildChest();
+    obj.position.set(x, y, z); obj.rotation.y = Math.random() * Math.PI * 2;
+    obj.traverse(o => { if (o.isMesh && !o.material.transparent) { o.castShadow = true; o.receiveShadow = true; } });
+    const glow = obj.getObjectByName('glow');
+    if (glow && glow.material) { glow.material = glow.material.clone(); glow.material.color?.set('#8CFFE0'); }
+    this.root.add(obj);
+    const c = { x, z, y, opened: false, obj, openT: 0, free: true };
+    this.chests.push(c);
+    return c;
   }
 
   _placeProps(rand) {
@@ -651,8 +696,8 @@ export class World {
         const cr = o.getObjectByName('crystal');
         if (cr) { cr.rotation.y = t * 1.4; cr.position.y = (cr.userData.baseY ??= cr.position.y) + Math.sin(t * 2 + s.x) * 0.25; cr.visible = !used; }
         glowOp(o.getObjectByName('ring'), used ? 0.05 : 0.35 + 0.35 * Math.sin(t * 3) + s.progress * 0.6);
-      } else if (s.kind === 'moai') {
-        glowOp(o.getObjectByName('eyes'), used ? 0.08 : 0.55 + 0.35 * Math.sin(ph * 2.2) + s.progress * 0.5);
+      } else if (s.kind === 'amber') {
+        glowOp(o.getObjectByName('glow'), used ? 0.08 : 0.5 + 0.3 * Math.sin(ph * 1.6) + s.progress * 0.5);
       } else if (s.kind === 'totem') {
         const f = o.getObjectByName('flame');
         if (f) { f.scale.set(1 + Math.sin(t * 13) * 0.08, 1 + Math.sin(t * 9 + 1) * 0.15, 1); f.visible = !used || s.active; }
@@ -677,27 +722,42 @@ export class World {
         if (lid) lid.rotation.x = -Math.min(1, c.openT * 4) * 1.9;
       }
     }
-    const bp = this.bossPortal;
-    if (bp) {
-      const o = bp.obj, ring = o.getObjectByName('ring');
-      const k = bp.state === 'idle' ? 0.35 : bp.state === 'charging' ? 0.5 + bp.progress : bp.state === 'active' ? 1.4 : 0.05;
-      if (ring) ring.rotation.z = t * (0.2 + k * 0.8);
-      glowOp(o.getObjectByName('runes'), Math.min(1, 0.2 + k * 0.6));
-      glowOp(o.getObjectByName('pad'), Math.min(1, 0.2 + k * 0.5 + 0.1 * Math.sin(t * 4)));
-      const v = o.getObjectByName('vortex');
-      if (v && v.userData.vortex && this.fx?.setVortexIntensity) this.fx.setVortexIntensity(v.material, bp.state === 'used' ? 0.08 : k);
+    const mc = this.meteor;
+    if (mc) {
+      const o = mc.obj, rock = o.getObjectByName('rock');
+      const k = mc.state === 'idle' ? 0.35 : mc.state === 'charging' ? 0.45 + mc.progress * 0.6 : 0.05;
+      if (rock) {
+        rock.userData.base ??= rock.position.clone();
+        const shake = mc.state === 'charging' ? mc.progress * 0.12 : 0;
+        rock.position.set(rock.userData.base.x + (Math.random() - 0.5) * shake, rock.userData.base.y + (Math.random() - 0.5) * shake, rock.userData.base.z + (Math.random() - 0.5) * shake);
+        rock.visible = mc.state !== 'used';
+      }
+      glowOp(o.getObjectByName('cracks'), Math.min(1, 0.3 + k * 0.8 + 0.1 * Math.sin(t * 4)));
+      glowOp(o.getObjectByName('pad'), mc.state === 'used' ? 0.12 : Math.min(1, 0.2 + k * 0.6 + 0.1 * Math.sin(t * 3)));
+      glowOp(o.getObjectByName('embers'), mc.state === 'used' ? 0.5 + 0.3 * Math.sin(t * 5) : 0.35 + k * 0.4);
     }
-    const ep = this.exitPortal;
-    if (ep) {
-      ep.t += dt;
-      const s = Math.min(1, ep.t / 0.8), e = 1 - Math.pow(1 - s, 3);
-      ep.obj.scale.setScalar(Math.max(0.01, e * (1 + Math.sin(Math.min(1, ep.t) * Math.PI) * 0.12)));
-      const ring = ep.obj.getObjectByName('ring');
-      if (ring) ring.rotation.z = -t * 0.9;
-      glowOp(ep.obj.getObjectByName('runes'), 0.6 + 0.4 * Math.sin(t * 5));
-      glowOp(ep.obj.getObjectByName('pad'), 0.5 + 0.3 * Math.sin(t * 4));
-      const v = ep.obj.getObjectByName('vortex');
-      if (v && v.userData.vortex && this.fx?.setVortexIntensity) this.fx.setVortexIntensity(v.material, 1.3);
+    const fg = this.fossilGate;
+    if (fg) {
+      const o = fg.obj;
+      const k = fg.state === 'idle' ? 0.45 : fg.state === 'charging' ? 0.6 + fg.progress * 0.8 : fg.state === 'active' ? 1.2 : 0.06;
+      glowOp(o.getObjectByName('eyes'), Math.min(1, 0.25 + k * 0.6 + 0.1 * Math.sin(t * 2.5)));
+      glowOp(o.getObjectByName('pad'), fg.state === 'used' ? 0.04 : Math.min(1, 0.2 + k * 0.5 + 0.1 * Math.sin(t * 3)));
+      const v = o.getObjectByName('vortex');
+      if (v && v.userData.vortex && this.fx?.setVortexIntensity) this.fx.setVortexIntensity(v.material, fg.state === 'used' ? 0.05 : k);
+    }
+    const cn = this.cannon;
+    if (cn) {
+      cn.t += dt;
+      const s2 = Math.min(1, cn.t / 0.9), e = 1 - Math.pow(1 - s2, 3);
+      cn.obj.scale.setScalar(Math.max(0.01, e * (1 + Math.sin(Math.min(1, cn.t / 0.9) * Math.PI) * 0.12)));
+      const barrel = cn.obj.getObjectByName('barrel');
+      if (barrel) {
+        barrel.userData.rest ??= barrel.rotation.x;
+        cn.recoil = Math.max(0, (cn.recoil || 0) - dt * 2);
+        barrel.rotation.x = barrel.userData.rest + cn.recoil * 0.35 - (cn.fired ? 0 : cn.progress * 0.05);
+      }
+      glowOp(cn.obj.getObjectByName('glow'), 0.55 + 0.45 * Math.sin(t * 6) + cn.progress * 0.5);
+      glowOp(cn.obj.getObjectByName('pad'), 0.45 + 0.35 * Math.sin(t * 4) + cn.progress * 0.5);
     }
   }
 }

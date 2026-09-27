@@ -26,6 +26,7 @@ export const TDEF = [
   /* dragon  */ { hp: 28000, speed: 4.5, dmg: 48, xp: 800, pts: 60000, gold: 1, cap: 2, anim: 3, color: '#FF5A1F', mass: 1e9, boss: true },
 ];
 const MAX = 3200;
+const BOSS_SOURCE_K = { slam: 0.6, quake: 0.5, ram: 0.4 };
 const G = 128, GC = 4, GH = G / 2; // spatial hash grid: 128x128 cells of 4 m
 
 function patchMaterial(mat, key) {
@@ -77,7 +78,7 @@ export class Enemies {
     this.x = f(); this.y = f(); this.z = f(); this.vx = f(); this.vz = f(); this.kx = f(); this.kz = f(); this.yo = f(); this.vy = f();
     this.hp = f(); this.maxHp = f(); this.spd = f(); this.dmg = f(); this.rad = f(); this.scale = f(); this.flash = f();
     this.ph = f(); this.rot = f(); this.deathT = f(); this.spin = f(); this.atk = f(); this.hitCd = f(); this.sawCd = f(); this.ramCd = f(); this.slow = f(); this.frz = f();
-    this.type = new Uint8Array(MAX); this.state = new Uint8Array(MAX); this.elite = new Uint8Array(MAX);
+    this.type = new Uint8Array(MAX); this.state = new Uint8Array(MAX); this.elite = new Uint8Array(MAX); this.fossil = new Uint8Array(MAX);
     this.lastBang = new Int32Array(MAX);
     this.free = []; for (let i = MAX - 1; i >= 0; i--) this.free.push(i);
     this.active = new Int32Array(MAX); this.activeCount = 0;
@@ -136,7 +137,7 @@ export class Enemies {
     if (this.countByType[ti] >= d.cap) return -1;
     const i = this.free.pop();
     const elite = o.elite ? 1 : 0;
-    this.type[i] = ti; this.state[i] = 1; this.elite[i] = elite;
+    this.type[i] = ti; this.state[i] = 1; this.elite[i] = elite; this.fossil[i] = 0;
     this.x[i] = x; this.z[i] = z; this.y[i] = this.world.heightAt(x, z);
     this.vx[i] = this.vz[i] = this.kx[i] = this.kz[i] = 0;
     this.vy[i] = d.fly || d.boss ? 0 : 9 + Math.random() * 2;
@@ -162,6 +163,7 @@ export class Enemies {
     const i = this.spawn(ti, x, z, { hp: def.hp, dmg: def.dmg, speed: def.speed, hpMult: o.hpMult || 1, dmgMult: o.dmgMult || 1, scale: (def.scale || 1) * (o.scale || 1) });
     if (i < 0) return null;
     if (id === 'warlord') { this.elite[i] = 1; this.rad[i] = TDEF[ti].radius * this.scale[i]; }
+    if (o.fossil) this.fossil[i] = 1;
     const b = new Boss(this.game, i, id, o);
     this.bosses.push(b);
     return b;
@@ -180,7 +182,8 @@ export class Enemies {
     if (this.state[i] !== 1) return 0;
     const ti = this.type[i], def = TDEF[ti];
     if (this.frz[i] > 0) amount *= 1.4;
-    if (def.boss) amount *= this.game.bossDmgMult || 1;
+    // crowd-control moves (slam, landing quakes, rams) are for hordes: bosses shrug most of it off
+    if (def.boss) amount *= (this.game.bossDmgMult || 1) * (BOSS_SOURCE_K[source] ?? 1);
     const dealt = Math.min(amount, this.hp[i]);
     this.hp[i] -= amount;
     this.flash[i] = 1;
@@ -208,6 +211,15 @@ export class Enemies {
     const boss = TDEF[ti].boss || this.elite[i] ? this.bossAt(i) : null;
     this.game.onKill(i, ti, this.x[i], this.y[i] + this.yo[i], this.z[i], this.elite[i], boss);
     if (boss) this.bosses.splice(this.bosses.indexOf(boss), 1);
+  }
+
+  // remove a boss without rewards (it crumbles when the island is cleared)
+  dismiss(i) {
+    if (this.state[i] !== 1 && this.state[i] !== 3) return;
+    const alive = this.state[i];
+    this.state[i] = 2; this.deathT[i] = 0.5; this.vy[i] = 4; this.kx[i] = this.kz[i] = 0; this.spin[i] = 2;
+    if (alive) { this.aliveCount--; this.countByType[this.type[i]]--; }
+    const b = this.bossAt(i); if (b) this.bosses.splice(this.bosses.indexOf(b), 1);
   }
 
   // kill everything in view in a satisfying chain (final boss defeated)
@@ -456,9 +468,10 @@ export class Enemies {
       if (ti === T.blob) sq = Math.sin(this.ph[i] * 2) * 0.16;
       else if (def.boss) { const b = this.bossAt(i); sq = Math.sin(t * 3) * 0.035 + (b ? b.squash || 0 : 0); }
       an[a + 2] = sq;
-      an[a + 3] = waiting ? 0.5 + 0.5 * Math.sin(t * 30 + i) : dying ? 0.6 : Math.max(0, this.flash[i]);
+      an[a + 3] = waiting ? 0.5 + 0.5 * Math.sin(t * 30 + i) : dying ? 0.6 : Math.max(this.fossil[i] ? 0.55 : 0, this.flash[i]);
       const cl = this.colAttr[ti].array, ci = c * 3;
       if (this.frz[i] > 0) { cl[ci] = 0.55; cl[ci + 1] = 0.95; cl[ci + 2] = 1.7; }
+      else if (this.fossil[i]) { cl[ci] = 1.25; cl[ci + 1] = 1.12; cl[ci + 2] = 0.92; } // bone-white fossil
       else if (this.elite[i]) { cl[ci] = 1.5; cl[ci + 1] = 1.2; cl[ci + 2] = 0.45; }
       else { cl[ci] = 1; cl[ci + 1] = 1; cl[ci + 2] = 1; }
     }

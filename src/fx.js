@@ -1,4 +1,4 @@
-// VELOCIBONK: fx.js
+// VELOCISMASH: fx.js
 // Pooled, allocation-free VFX (particles, damage numbers, rings, telegraphs, lightning,
 // beams, text popups, speed trail, fire) and the post-processing stack (bloom + SpeedFX).
 //
@@ -2828,7 +2828,7 @@ const SpeedFXShader = {
     uFlash: { value: 0 },
     uAspect: { value: 1 },
     uResolution: { value: new THREE.Vector2(1, 1) },
-    // biome grade (setGrade), FINAL SWARM (setSwarm), portal travel (warp)
+    // biome grade (setGrade), EXTINCTION (setSwarm), portal travel (warp)
     uTint: { value: new THREE.Color(1, 1, 1) },
     uSat: { value: 1 },
     uContrast: { value: 1 },
@@ -2924,7 +2924,7 @@ float warpLines(vec2 d, float w) {
   return line * seg * on * smoothstep(0.0, 0.4, along) * (1.0 - smoothstep(0.85, 1.0, along));
 }
 
-// FINAL SWARM: faint wavy streaks creeping inward from the edges.
+// EXTINCTION: faint wavy streaks creeping inward from the edges.
 float ghostLines(vec2 d) {
   vec2 p = d * vec2(uAspect, 1.0) * 2.0;
   float r = length(p);
@@ -2996,7 +2996,7 @@ void main() {
   float vig = smoothstep(mix(0.55, 0.3, k), 1.45, re);
   col = mix(col, uVigColor, vig * mix(0.28, 0.6, k));
 
-  // FINAL SWARM: pulsing dark, desaturated edges with a sickly cyan/purple tint creeping inward
+  // EXTINCTION: pulsing dark, desaturated edges with a sickly cyan/purple tint creeping inward
   float swm = clamp(uSwarm, 0.0, 1.0);
   if (swm > 0.001) {
     float ang = atan(d.y * uAspect, d.x);
@@ -3117,7 +3117,7 @@ export class PostFX {
     if (g.dur <= 0) this._stepGrade(1);
   }
 
-  /** FINAL SWARM look, 0..1 (eased linearly over ~0.6 s so it creeps in). */
+  /** EXTINCTION look, 0..1 (eased linearly over ~0.6 s so it creeps in). */
   setSwarm(x) { this._swarmTarget = clampN(x, 0, 0, 1); }
 
   /** Portal travel 0..1: zoom-blur tunnel + chromatic streaks; 1 = full white. Applied immediately (the game animates it). */

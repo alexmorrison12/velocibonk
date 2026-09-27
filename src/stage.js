@@ -1,5 +1,5 @@
 // One island of a run: the countdown, spawn director, mini-bosses, the boss portal, the final boss,
-// the FINAL SWARM, and every shrine interaction. Operates on the Game instance.
+// the EXTINCTION wave, and every shrine interaction. Operates on the Game instance.
 import * as THREE from 'three';
 import { T, TDEF } from './enemies.js';
 import { PLAY_R } from './world.js';
@@ -74,7 +74,7 @@ export function updateDirector(g, dt) {
       const a = q / n * Math.PI * 2, x = P.x + Math.cos(a) * 24, z = P.z + Math.sin(a) * 24;
       if (g.world.heightAt(x, z) > 0.3 && Math.hypot(x, z) < PLAY_R + 4) E.spawn(ti, x, z, { hpMult: g.hpMult, dmgMult: g.dmgMult });
     }
-    g.ui.announce('SURROUNDED!', { sub: 'bonk your way out', color: '#FF3D8B', duration: 1.6 });
+    g.ui.announce('SURROUNDED!', { sub: 'smash your way out', color: '#FF3D8B', duration: 1.6 });
     g.audio.play('warning', { volume: 0.5 });
   }
   // mini-bosses
@@ -97,11 +97,11 @@ export function updateDirector(g, dt) {
       if (b) g.onBossSpawn(b, false);
     }
   }
-  // the countdown hits zero: the boss comes to you, and the FINAL SWARM begins
+  // the countdown hits zero: the boss comes to you, and the EXTINCTION wave begins
   if (t >= ISLAND_TIME && !g.swarm) {
     g.swarm = true; g.swarmT = 0; g.swarmLevel = 0;
     if (!g.finalSpawned) summonFinalBoss(g, bossSpawnPos(g, 30));
-    g.ui.announce('FINAL SWARM', { sub: 'kill the boss before it kills you', color: '#FF3D8B', duration: 3 });
+    g.ui.announce('EXTINCTION', { sub: 'smash the boss before it wipes you out', color: '#FF3D8B', duration: 3 });
     g.audio.play('swarmstart'); g.audio.startMusic('final', g.island.id);
     g.post.setSwarm?.(0.5);
   }
@@ -131,10 +131,25 @@ function bossSpawnPos(g, dist) {
   return { x: bx, z: bz };
 }
 
+// FOSSIL ECHO: a bone-white ghost of this island's final boss — about half its strength, slower,
+// no enrage. Beating it grants a Fossil Boon (a unique run power) and two free chests.
+export function awakenFossilEcho(g) {
+  const I = g.island, gate = g.world.fossilGate;
+  const a = Math.atan2(-gate.x, -gate.z);
+  const x = gate.x + Math.sin(a) * 8, z = gate.z + Math.cos(a) * 8;
+  const hp = g.hpMult * 0.8 * (1 + 0.8 * (g.islandN - 1)) * 0.5;
+  const b = g.enemies.spawnBoss(I.boss, x, z, { name: 'FOSSIL ' + I.bossName, title: 'AN ECHO FROM BEFORE THE EXTINCTION', fossil: true, gapK: 1.3, hpMult: hp, dmgMult: (g.bossDmg || 1) * 0.8 });
+  if (!b) return null;
+  gate.state = 'active';
+  g.fossilEcho = b;
+  g.onBossSpawn(b, false);
+  return b;
+}
+
 export function summonFinalBoss(g, pos) {
   const I = g.island;
   g.finalSpawned = true;
-  if (g.world.bossPortal) g.world.bossPortal.state = 'active';
+  if (g.world.meteor) g.world.meteor.state = 'used';
   const b = g.enemies.spawnBoss(I.boss, pos.x, pos.z, { name: I.bossName, title: I.bossTitle, final: true, hpMult: g.hpMult * (1 + Math.min(0.2, Math.max(0, g.islandTime - 120) / 1200)) * 0.8 * (1 + 0.8 * (g.islandN - 1)), dmgMult: g.bossDmg || 1 });
   if (!b) return null;
   g.finalBoss = b;
@@ -151,25 +166,25 @@ export function interact(g, dt) {
     if (c.opened) continue;
     const d = Math.hypot(P.x - c.x, P.z - c.z);
     if (d > 5) continue;
-    const cost = g.chestCost();
+    const cost = c.free ? 0 : g.chestCost();
     if (d < 1.9) {
       if (g.gold >= cost) {
-        g.gold -= cost; c.opened = true; g.chestsOpened++; g.progress.add('chests');
+        g.gold -= cost; c.opened = true; if (!c.free) g.chestsOpened++; g.progress.add('chests');
         g.fx.confetti(_p.set(c.x, c.y + 1.2, c.z), 70);
         g.openChoices('chest');
         return;
       }
       prompt = `CHEST · ${cost} GOLD — need ${cost - Math.floor(g.gold)} more`;
-    } else prompt = `CHEST · ${cost} GOLD — walk in to open`;
+    } else prompt = c.free ? 'FREE CHEST · walk in to open' : `CHEST · ${cost} GOLD — walk in to open`;
   }
   // shrines
   for (const s of w.shrines) {
     if (s.used) continue;
     const d = Math.hypot(P.x - s.x, P.z - s.z);
     const R = 2.9;
-    const need = s.kind === 'blessing' ? 2.5 : s.kind === 'moai' ? 2.2 : s.kind === 'pylon' ? 0.8 : 1.5;
-    const label = { blessing: 'BLESSING SHRINE', moai: 'MOAI HEAD', totem: 'CHALLENGE TOTEM', greed: 'GREED IDOL', pylon: 'MAGNET PYLON' }[s.kind];
-    const what = { blessing: 'a tome blessing', moai: 'a raw stat boost', totem: 'a timed trial for epic loot', greed: 'more gold & XP, tougher foes', pylon: 'pull in every gem on the island' }[s.kind];
+    const need = s.kind === 'blessing' ? 2.5 : s.kind === 'amber' ? 2.2 : s.kind === 'pylon' ? 0.8 : 1.5;
+    const label = { blessing: 'BLESSING SHRINE', amber: 'AMBER OBELISK', totem: 'CHALLENGE TOTEM', greed: 'GREED IDOL', pylon: 'MAGNET PYLON' }[s.kind];
+    const what = { blessing: 'a charm blessing', amber: 'a mutation (raw stat boost)', totem: 'a timed trial for epic loot', greed: 'more gold & XP, tougher foes', pylon: 'pull in every gem on the island' }[s.kind];
     if (d < R) {
       if (s.kind === 'totem' && g.trial) { prompt = 'A TRIAL IS ALREADY RUNNING'; continue; }
       s.progress += dt / need;
@@ -181,33 +196,67 @@ export function interact(g, dt) {
       if (d < 7) prompt = `${label} · stand inside: ${what}`;
     }
   }
-  // boss portal
-  const bp = w.bossPortal;
-  if (bp && !g.finalSpawned && !g.cleared) {
-    const d = Math.hypot(P.x - bp.x, P.z - bp.z);
-    if (d < 3.4) {
-      bp.state = 'charging'; bp.progress = Math.min(1, bp.progress + dt / 2.2);
-      prompt = `BOSS PORTAL · SUMMONING ${g.island.bossName} ${Math.floor(bp.progress * 100)}%`;
-      if (bp.progress >= 1) {
-        g.audio.play('portal');
-        g.fx.pillar?.(_p.set(bp.x, bp.y, bp.z), '#B45CFF', 1.2, 3.5);
-        const a = Math.atan2(P.x - bp.x, P.z - bp.z);
-        summonFinalBoss(g, { x: bp.x - Math.sin(a) * 4, z: bp.z - Math.cos(a) * 4 });
+  // meteor crater: stand in it to crack the meteor and summon the final boss early
+  const mc = w.meteor;
+  if (mc && !g.finalSpawned && !g.cleared) {
+    const d = Math.hypot(P.x - mc.x, P.z - mc.z);
+    if (d < 4.6) {
+      mc.state = 'charging'; mc.progress = Math.min(1, mc.progress + dt / 2.2);
+      prompt = `METEOR CRATER · CRACKING IT OPEN ${Math.floor(mc.progress * 100)}%`;
+      if (Math.random() < 0.4) g.fx.burst(_p.set(mc.x + (Math.random() - 0.5) * 3, mc.y + 1, mc.z + (Math.random() - 0.5) * 3), '#FF7A1A', 1, { speed: 3, up: 5, life: 0.6, glow: 2 });
+      if (mc.progress >= 1) {
+        g.audio.play('portal'); g.audio.play('explosion', { volume: 1, pitch: 0.55 });
+        _p.set(mc.x, mc.y + 1.5, mc.z);
+        g.fx.burst(_p, '#FF7A1A', 50, { speed: 16, up: 12, size: 0.4, glow: 2 });
+        g.fx.burst(_p, '#3A2A24', 30, { speed: 12, up: 10, size: 0.5 });
+        g.fx.ring(_p, 16, '#FF9E2C', 0.6, 1.5);
+        g.fx.pillar?.(_p.set(mc.x, mc.y, mc.z), '#FF5A1A', 1.2, 3.5);
+        g.shake(1.1);
+        // the blast throws you clear of the crater
+        { const dx = P.x - mc.x, dz = P.z - mc.z, dd = Math.hypot(dx, dz) + 1e-3; g.player.vel.set(dx / dd * 16, 13, dz / dd * 16); g.player.onGround = false; }
+        summonFinalBoss(g, { x: mc.x, z: mc.z });
         return;
       }
     } else {
-      if (bp.state === 'charging') bp.state = 'idle';
-      bp.progress = Math.max(0, bp.progress - dt * 0.6);
-      if (d < 9) prompt = `BOSS PORTAL · stand inside to summon ${g.island.bossName} early (bonus score)`;
+      if (mc.state === 'charging') mc.state = 'idle';
+      mc.progress = Math.max(0, mc.progress - dt * 0.6);
+      if (d < 10) prompt = `METEOR CRATER · stand inside to summon ${g.island.bossName} early (bonus score)`;
     }
   }
-  // exit portal
-  const ep = w.exitPortal;
-  if (ep && g.cleared) {
-    const d = Math.hypot(P.x - ep.x, P.z - ep.z);
+  // fossil gate: awaken a Fossil Echo (optional, once per island)
+  const fg = w.fossilGate;
+  if (fg && fg.state !== 'used' && fg.state !== 'active' && !g.cleared) {
+    const d = Math.hypot(P.x - fg.px, P.z - fg.pz);
+    if (d < 3.2) {
+      fg.state = 'charging'; fg.progress = Math.min(1, fg.progress + dt / 2.0);
+      prompt = `FOSSIL GATE · AWAKENING THE ECHO ${Math.floor(fg.progress * 100)}%`;
+      if (fg.progress >= 1) {
+        g.audio.play('portal', { pitch: 0.8 });
+        g.fx.pillar?.(_p.set(fg.x, fg.y, fg.z), '#FFD08A', 1.2, 3.5);
+        awakenFossilEcho(g);
+        return;
+      }
+    } else {
+      if (fg.state === 'charging') fg.state = 'idle';
+      fg.progress = Math.max(0, fg.progress - dt * 0.6);
+      if (Math.hypot(P.x - fg.x, P.z - fg.z) < 12) prompt = `FOSSIL GATE · stand in the jaws: fight a Fossil Echo for a boon + 2 free chests`;
+    }
+  }
+  // launch cannon: stand on its pad to get fired off the island
+  const cn = w.cannon;
+  if (cn && g.cleared && !cn.fired) {
+    const d = Math.hypot(P.x - cn.px, P.z - cn.pz);
     const next = g.nextIsland();
-    if (d < 3.2 && ep.t > 1) { g.enterExitPortal(); return; }
-    if (d < 14) prompt = next ? `EXIT PORTAL · jump in to travel to ${next.name}` : g.islandN === 5 ? 'EXIT PORTAL · step through to claim victory' : `EXIT PORTAL · step through to end the run (${ISLANDS[g.islandN].name} unlocked!)`;
+    const where = next ? `to ${next.name}` : g.islandN === 5 ? 'into legend' : `home (${ISLANDS[g.islandN].name} unlocked!)`;
+    if (d > 4.5 && cn.t > 1) cn.armed = true; // must walk up to it: never fires on someone who was standing there
+    if (d < 2.8 && cn.armed) {
+      cn.progress = Math.min(1, cn.progress + dt / 1.0);
+      prompt = `LAUNCH CANNON · LOADING ${3 - Math.min(2, Math.floor(cn.progress * 3))}…`;
+      if (cn.progress >= 1) { g.fireCannon(); return; }
+    } else {
+      cn.progress = Math.max(0, cn.progress - dt);
+      if (Math.hypot(P.x - cn.x, P.z - cn.z) < 16) prompt = `LAUNCH CANNON · climb in to get fired ${where}`;
+    }
   }
   if (prompt !== g._prompt) { g._prompt = prompt; g.ui.setPrompt(prompt); }
 }
@@ -217,7 +266,7 @@ function activateShrine(g, s) {
   g.progress.add('shrines');
   g.fx.ring(_p.set(s.x, s.y + 0.3, s.z), 8, s.kind === 'greed' ? '#FFC23D' : '#1AE3FF', 0.6, 1);
   if (s.kind === 'blessing') { g.audio.play('shrine'); g.openChoices('shrine'); }
-  else if (s.kind === 'moai') { g.audio.play('moai'); g.openChoices('moai'); }
+  else if (s.kind === 'amber') { g.audio.play('amber'); g.openChoices('amber'); }
   else if (s.kind === 'pylon') {
     g.pickups.vacuum();
     g.fx.pillar?.(_p.set(s.x, s.y, s.z), '#1AE3FF', 0.8, 3);
@@ -260,12 +309,12 @@ export function updateTrial(g, dt) {
 }
 
 export function phaseText(g) {
-  if (g.cleared) return g.nextIsland() ? 'ISLAND CLEARED — FIND THE PORTAL' : 'ISLAND CLEARED — STEP INTO THE PORTAL';
-  if (g.swarm) return 'FINAL SWARM — KILL THE BOSS';
+  if (g.cleared) return g.world.cannon?.fired ? 'LAUNCHED! HOLD ON TO YOUR HAT' : 'ISLAND CLEARED — GET TO THE LAUNCH CANNON';
+  if (g.swarm) return 'EXTINCTION — SMASH THE BOSS';
   if (g.finalBoss && g.finalBoss.alive) return `${g.island.bossName} — ${stageTimeLeft(g) > 0 ? 'BEAT IT BEFORE 0:00' : 'NOW!'}`;
   const mt = MINI_TIMES[g.miniIdx];
-  if (mt !== undefined && g.islandTime < mt) return `BOSS IN ${fmtTime(mt - g.islandTime)} · PORTAL OPEN`;
-  return `FINAL BOSS AT 0:00 · OR USE THE PORTAL`;
+  if (mt !== undefined && g.islandTime < mt) return `BOSS IN ${fmtTime(mt - g.islandTime)} · CRATER IS HOT`;
+  return `FINAL BOSS AT 0:00 · OR CRACK THE METEOR`;
 }
 
 export { MINI_TIMES, clamp };
