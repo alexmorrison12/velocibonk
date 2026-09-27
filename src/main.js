@@ -9,6 +9,7 @@ import { Arsenal, WEAPONS } from './weapons.js';
 import { rollChoices, applyTome, freshStats, TOMES } from './upgrades.js';
 import { FX, PostFX } from './fx.js';
 import { UI } from './ui.js';
+import { Leaderboard } from './leaderboard.js';
 import { audio } from './audio.js';
 import { mulberry32, hashString, clamp, lerp } from './rng.js';
 
@@ -102,6 +103,8 @@ class Game {
       onCopyShare: () => {},
     });
 
+    this.lb = new Leaderboard(this, { getName: () => store.get('name', ''), setName: (n) => store.set('name', n) });
+
     this.keys = {}; this.mouseDX = 0; this.mouseDY = 0; this.lastMouseInput = 0;
     this.yaw = 0; this.pitch = 0.38; this.camDist = 8.5; this.shakeAmp = 0;
     this.state = 'title'; this.time = 0; this.timeScale = 1;
@@ -153,6 +156,7 @@ class Game {
     const k = this.keys;
     addEventListener('keydown', (e) => {
       if (e.repeat) { if (['Space', 'ShiftLeft', 'ShiftRight', 'KeyC'].includes(e.code)) e.preventDefault(); return; }
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
       k[e.code] = true;
       if (e.code === 'Space') { this.jumpPressed = true; e.preventDefault(); }
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') this.slidePressed = true;
@@ -206,18 +210,20 @@ class Game {
       bests: this.bests.slice(0, 5), challenge: this.challenge ? { score: this.challenge.score, daily: this.challenge.daily, name: null } : null,
       settings: this.settings,
     });
+    this.lb.refresh();
     audio.startMusic('title');
   }
 
   startRun(mode) {
     audio.init();
     this.lastMode = mode;
-    let seed, dailyN = null;
-    if (mode === 'daily') {
-      if (this.challenge) { seed = this.challenge.seed; dailyN = this.challenge.daily; }
-      else { seed = this.daily.seed; dailyN = this.daily.n; }
-    } else { seed = (Math.random() * 2 ** 32) >>> 0; }
-    this.run = { seed, daily: dailyN, tag: dailyN ? `d${dailyN}` : `s${seed.toString(36)}` };
+    let seed, dailyN = null, ch = null;
+    if (mode === 'challenge' && this.pendingChallenge) ch = this.pendingChallenge;
+    else if (mode === 'daily' && this.challenge) ch = this.challenge;
+    if (ch) { seed = ch.seed; dailyN = ch.daily; }
+    else if (mode === 'daily') { seed = this.daily.seed; dailyN = this.daily.n; }
+    else { seed = (Math.random() * 2 ** 32) >>> 0; }
+    this.run = { seed, daily: dailyN, tag: dailyN ? `d${dailyN}` : `s${seed.toString(36)}`, challenge: ch, challengeBeaten: false };
     if (this.world.seed !== seed) this.world.generate(seed);
     this.rand = mulberry32(seed ^ 0x9e3779b9);
     this.enemies.reset(); this.pickups.reset(); this.arsenal.reset(); this.fx.clear();
@@ -255,7 +261,9 @@ class Game {
     this.state = 'playing';
     this.lockPointer();
     audio.startMusic('run'); audio.setIntensity(0);
-    this.ui.announce(this.run.daily ? `DAILY #${this.run.daily}` : 'RANDOM ISLAND', { sub: 'SPEED IS DAMAGE — GO FAST', color: '#FFE14D', duration: 2.4 });
+    const rc = this.run.challenge;
+    this.ui.announce(rc ? `BEAT ${fmt(rc.score)}` : this.run.daily ? `DAILY #${this.run.daily}` : 'RANDOM ISLAND',
+      { sub: rc ? `${rc.name ? rc.name.toUpperCase() + '’S RUN · ' : ''}${this.run.daily ? 'DAILY #' + this.run.daily : 'RANDOM ISLAND'}` : 'SPEED IS DAMAGE — GO FAST', color: rc ? '#FF3D8B' : '#FFE14D', duration: 2.4 });
     // quick controls primer (first run of the session gets the full set)
     const tips = [['WASD move · MOUSE look · click to lock the cursor', 1.2], ['SPACE jump — hold it to bunny-hop and build speed', 4.2], ['SHIFT slide downhill · SHIFT in the air = SLAM', 7.2], ['×2 MOMENTUM = RAM MODE: plow straight through them', 10.2]];
     this._tipTimers?.forEach(clearTimeout);
@@ -264,6 +272,15 @@ class Game {
     this.ramAnnounced = false;
     // opening wave so the first seconds already feel alive
     for (let i = 0; i < 14; i++) this.spawnAround(T.blob, 22, 34);
+  }
+
+  // launched from a leaderboard row: play that run's island with its score as the target
+  startChallenge({ score, name, tag }) {
+    const m = /^(?:d(\d+)|s([0-9a-z]+))$/.exec(tag || '');
+    if (!m) return;
+    if (m[1]) { const d = dailyInfo(parseInt(m[1], 10)); this.pendingChallenge = { score, name, daily: d.n, seed: d.seed, tag }; }
+    else this.pendingChallenge = { score, name, daily: null, seed: parseInt(m[2], 36) >>> 0, tag };
+    this.startRun('challenge');
   }
 
   pause() {
@@ -439,7 +456,9 @@ class Game {
       store.set('ghostTags', tags.slice(0, 6));
     }
     if (this.ghost) this.ghost.model.visible = false;
-    const challenge = this.challenge && this.challenge.tag === this.run.tag ? { target: this.challenge.score, won: score > this.challenge.score, diff: score - this.challenge.score } : null;
+    const ch = this.run.challenge;
+    const challenge = ch ? { target: ch.score, won: score > ch.score, diff: score - ch.score } : null;
+    this.lb.prepareSubmit({ score, time: this.runTime, kills: this.kills, level: this.level, topSpeed: this.topSpeed, maxMomentum: this.maxMomentum, tag: this.run.tag });
     const link = `${SHARE_URL || location.href.split('#')[0]}#vs-${this.run.tag}-${score}`;
     const shareText = [
       `VELOCIBONK 🦖 ${this.run.daily ? `Daily #${this.run.daily}` : 'Random Island'}`,
@@ -724,6 +743,12 @@ class Game {
       this.pickups.update(dt, this.time);
       this.interact(dt);
       this.score += dt * 5 * (1 + this.runTime / 60);
+      const rc = this.run.challenge;
+      if (rc && !this.run.challengeBeaten && this.score > rc.score) {
+        this.run.challengeBeaten = true;
+        this.ui.announce('CHALLENGE BEATEN!', { sub: `you passed ${rc.name ? rc.name.toUpperCase() : 'the target'}: ${fmt(rc.score)}`, color: '#8CFF5A', duration: 2.4 });
+        audio.play('newbest', { volume: 0.8 });
+      }
       audio.setIntensity(clamp(this.enemies.aliveCount / 700 + this.runTime / 900, 0, 1));
       if (this.levelsPending > 0 && this.state === 'playing') this.openChoices('level');
     } else {

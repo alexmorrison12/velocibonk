@@ -12,7 +12,8 @@ A 3D survivors roguelite where speed is damage. Bhop, slide and slam across a pr
 - **Build crafting.** 10 auto-weapons, 14 stat tomes, rarity-rolled upgrade cards, chests, shrines and elite enemies.
 - **Bosses.** Three bosses at 3:00, 6:00 and 9:00 with shockwaves you have to jump over, then a Final Swarm at 10:00 that never stops.
 - **Daily island.** Everyone gets the same seeded island each day.
-- **Challenge links.** The game-over screen copies a link with your score. Friends who open it play the same island and try to beat it.
+- **Global leaderboard.** Today's top 10 and an all-time board on the title screen. Hit **BEAT IT** on any row to play that run's island with its score as your target, and post your own score from the game-over screen.
+- **Challenge links.** The game-over screen also copies a link with your score. Friends who open it play the same island and try to beat it.
 - **Ghost racing.** Your best run on each island replays as a ghost the next time you play it.
 - **Hordes.** 1,500+ enemies on screen, animated on the GPU with instanced meshes.
 - **Fully procedural.** Every model, texture, sound effect and song is generated in code at load time. The whole game ships as a single ~900 KB HTML file.
@@ -52,5 +53,6 @@ three.js r186, bundled with esbuild. No other runtime dependencies.
 | `src/audio.js` | Web Audio synthesized sound effects and adaptive music |
 | `src/fx.js` | Particles, damage numbers, speed lines and post-processing |
 | `src/ui.js`, `src/ui.css` | HUD and menus |
+| `src/leaderboard.js` | Global leaderboard client (Supabase: scores are read and written only through two Postgres functions that validate and rate-limit submissions) |
 
 Built with [Claude Code](https://claude.com/claude-code).
