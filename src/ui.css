@@ -1,0 +1,1328 @@
+/* =====================================================================
+   VELOCIBONK — UI
+   Chunky arcade × Y2K racing HUD. Everything leans forward.
+   All classes are prefixed vb-; the #ui root gets .vb-root.
+   ===================================================================== */
+
+.vb-root {
+  --ink: #140f2e;
+  --night: #1f1747;
+  --deep: #2b2168;
+  --plum: #4a3aa0;
+  --lav: #b9b0e6;
+  --sun: #FF7A1A;
+  --volt: #FFE14D;
+  --surf: #1AE3FF;
+  --hot: #FF3D8B;
+  --lime: #8CFF5A;
+  --paper: #FFF6E5;
+  --r-common: #C9C4D9;
+  --r-uncommon: #6BE36B;
+  --r-rare: #3DA5FF;
+  --r-epic: #B45CFF;
+  --r-legendary: #FFB020;
+  --f-disp: "Lilita One", "Arial Black", "Impact", "Haettenschweiler", system-ui, sans-serif;
+  --f-ui: "Chakra Petch", "Barlow Condensed", "Roboto Condensed", "Arial Narrow", "Segoe UI", system-ui, sans-serif;
+  /* HUD unit scales with the smaller of height / width so ultrawide stays sane */
+  --hu: clamp(11px, calc(min(1vh, 0.6vw) * 1.55), 20px);
+  /* menu unit */
+  --mu: clamp(14px, min(calc(1.05vw + 4px), 1.9vh), 20px);
+
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  overflow: hidden;
+  pointer-events: none;
+  font-family: var(--f-ui);
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1.2;
+  color: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.vb-root *,
+.vb-root *::before,
+.vb-root *::after { box-sizing: border-box; }
+.vb-root h1, .vb-root h2, .vb-root h3, .vb-root p, .vb-root ol, .vb-root ul, .vb-root dl, .vb-root dd { margin: 0; }
+.vb-root svg { display: block; overflow: visible; }
+.vb-root [hidden] { display: none !important; }
+
+/* ---------- sticker text: thick outline + hard offset shadow from data-t ---------- */
+.vb-ot { position: relative; z-index: 0; }
+.vb-ot::before,
+.vb-ot::after {
+  content: attr(data-t);
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  color: var(--ink);
+  -webkit-text-fill-color: var(--ink);
+  -webkit-text-stroke: var(--otw, 0.2em) var(--ink);
+  text-shadow: none;
+  pointer-events: none;
+}
+.vb-ot::before { transform: translate(var(--otx, 0.055em), var(--oty, 0.08em)); }
+
+.vb-root kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75em;
+  height: 1.75em;
+  padding: 0 0.4em;
+  font-family: var(--f-disp);
+  font-weight: 400;
+  font-size: 0.95em;
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--ink);
+  background: var(--paper);
+  border: 0.13em solid var(--ink);
+  border-radius: 0.3em;
+  box-shadow: 0 0.18em 0 var(--ink);
+  text-shadow: none;
+}
+.vb-root kbd.w { min-width: 4.4em; }
+
+/* ---------------------------------------------------------------- buttons */
+.vb-btn {
+  --bc: #4a3aa0;
+  --bh: #6c58cc;
+  --bs: 0.26em 0.3em 0 var(--ink);
+  --bi: inset 0 -0.2em 0 rgba(20, 15, 46, 0.3), inset 0 0.14em 0 rgba(255, 255, 255, 0.28);
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  display: inline-flex;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--paper);
+  cursor: pointer;
+  outline: none;
+  transform: skewX(-10deg);
+}
+.vb-btn-in {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55em;
+  width: 100%;
+  padding: 0.62em 1.3em 0.66em;
+  font-family: var(--f-disp);
+  font-weight: 400;
+  font-size: 1.3em;
+  line-height: 1;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: linear-gradient(180deg, var(--bh) 0%, var(--bh) 22%, var(--bc) 22%, var(--bc) 100%);
+  border: 0.15em solid var(--ink);
+  border-radius: 0.32em;
+  box-shadow: var(--bs), var(--bi);
+  text-shadow: 0.05em 0.07em 0 var(--ink);
+  transition: transform 0.14s cubic-bezier(0.3, 1.7, 0.5, 1), box-shadow 0.14s, filter 0.14s;
+}
+.vb-btn:hover .vb-btn-in { --bs: 0.4em 0.46em 0 var(--ink); transform: translate(-0.08em, -0.14em); filter: brightness(1.08); }
+.vb-btn:active .vb-btn-in { --bs: 0.06em 0.08em 0 var(--ink); transform: translate(0.2em, 0.22em); transition-duration: 0.04s; }
+.vb-btn:focus-visible .vb-btn-in { outline: 0.18em solid var(--volt); outline-offset: 0.22em; }
+.vb-btn:focus-visible::before {
+  content: "";
+  position: absolute;
+  left: -1.1em;
+  top: 50%;
+  width: 0.65em;
+  height: 0.85em;
+  margin-top: -0.425em;
+  background: var(--volt);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+  animation: vb-nudge 0.5s ease-in-out infinite alternate;
+}
+.vb-btn:disabled { cursor: default; }
+.vb-btn:disabled .vb-btn-in { --bs: 0.1em 0.12em 0 var(--ink); filter: saturate(0.25) brightness(0.72); transform: none; }
+.vb-btn-sun { --bc: var(--sun); --bh: #ffa451; }
+.vb-btn-surf { --bc: #0fb3d3; --bh: #5eeeff; }
+.vb-btn-hot { --bc: var(--hot); --bh: #ff7fb2; }
+.vb-btn-volt { --bc: #f6c700; --bh: var(--volt); color: var(--ink); }
+.vb-btn-volt .vb-btn-in { text-shadow: none; }
+.vb-btn-surf.vb-done { --bc: #4fd12a; --bh: var(--lime); }
+.vb-btn-xl .vb-btn-in { font-size: 1.95em; padding: 0.46em 0.9em 0.5em 1em; justify-content: space-between; overflow: hidden; }
+.vb-btn-lg .vb-btn-in { font-size: 1.45em; }
+.vb-btn-md .vb-btn-in { font-size: 1.08em; padding: 0.62em 1.1em 0.66em; }
+.vb-btn-hot.vb-armed .vb-btn-in { animation: vb-throb 0.5s ease-in-out infinite; }
+.vb-btn-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 0.2em; }
+.vb-btn-stack small {
+  font-family: var(--f-ui);
+  font-weight: 700;
+  font-size: 0.4em;
+  letter-spacing: 0.22em;
+  color: var(--ink);
+  text-shadow: none;
+}
+.vb-btn-go { width: 1.1em; height: 0.7em; margin-left: 0.5em; color: var(--paper); filter: drop-shadow(0.05em 0.07em 0 var(--ink)); animation: vb-nudge 0.6s ease-in-out infinite alternate; }
+.vb-btn-go svg { width: 100%; height: 100%; }
+.vb-btn-xl .vb-btn-in::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.5) 44%, rgba(255, 255, 255, 0) 58%);
+  transform: translateX(-130%);
+  animation: vb-shine 3.4s ease-in-out 1.3s infinite;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------- screens */
+.vb-screen { position: absolute; inset: 0; display: none; }
+.vb-screen.vb-on { display: flex; animation: vb-in 0.2s ease-out both; }
+.vb-screen.vb-leaving { animation: vb-out 0.2s ease-in both; pointer-events: none !important; }
+.vb-modal { z-index: 10; pointer-events: auto; overflow-x: hidden; overflow-y: auto; font-size: var(--mu); }
+.vb-dim { position: fixed; inset: 0; background: rgba(20, 15, 46, 0.66); }
+
+.vb-panel { position: relative; z-index: 0; padding: 1.6em 2.3em 1.7em; }
+.vb-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, #2e2470 0%, var(--night) 38%, #17113a 100%);
+  border: 0.22em solid var(--ink);
+  border-radius: 0.9em;
+  transform: skewX(-2.5deg);
+  box-shadow: 0 0 0 0.2em var(--sun), 0.7em 0.75em 0 0.2em var(--ink);
+}
+.vb-h {
+  margin: 0 0 0.55em;
+  font-family: var(--f-disp);
+  font-weight: 400;
+  font-size: 2.7em;
+  line-height: 1;
+  text-align: center;
+  color: var(--sun);
+  transform: skewX(-10deg);
+}
+.vb-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+  margin-bottom: 0.65em;
+  font-family: var(--f-disp);
+  font-weight: 400;
+  font-size: 1.3em;
+  letter-spacing: 0.04em;
+  color: var(--volt);
+  text-shadow: 0.06em 0.08em 0 var(--ink);
+}
+.vb-head-ic { width: 1.3em; height: 1.3em; flex: none; }
+.vb-head-ic svg { width: 100%; height: 100%; }
+.vb-empty { padding: 0.8em; font-size: 0.9em; letter-spacing: 0.04em; text-align: center; color: var(--lav); }
+
+/* =====================================================================
+   HUD (display only)
+   ===================================================================== */
+.vb-hud { position: absolute; inset: 0; display: none; font-size: var(--hu); }
+.vb-hud.vb-on { display: block; }
+.vb-tl, .vb-tc, .vb-tr, .vb-bl, .vb-bc { position: absolute; contain: layout style; }
+
+/* speed lines (tier 2+) */
+.vb-speedlines {
+  position: absolute;
+  inset: -20%;
+  display: none;
+  opacity: 0;
+  background: repeating-conic-gradient(from 3deg at 50% 50%, rgba(255, 246, 229, 0) 0deg 5deg, rgba(255, 246, 229, 0.7) 5deg 5.45deg, rgba(255, 246, 229, 0) 5.45deg 11deg);
+  -webkit-mask-image: radial-gradient(closest-side, transparent 54%, #000 100%);
+  mask-image: radial-gradient(closest-side, transparent 54%, #000 100%);
+}
+.vb-hud[data-tier="2"] .vb-speedlines,
+.vb-hud[data-tier="3"] .vb-speedlines,
+.vb-hud[data-tier="4"] .vb-speedlines { display: block; animation: vb-lines 0.3s steps(3) infinite; }
+.vb-hud[data-tier="2"] .vb-speedlines { opacity: 0.13; }
+.vb-hud[data-tier="3"] .vb-speedlines { opacity: 0.22; }
+.vb-hud[data-tier="4"] .vb-speedlines { opacity: 0.34; }
+
+.vb-vignette,
+.vb-hitflash {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: radial-gradient(ellipse at center, rgba(255, 61, 139, 0) 50%, rgba(255, 61, 139, 0.55) 100%);
+}
+.vb-hitflash { background: radial-gradient(ellipse at center, rgba(255, 40, 90, 0) 38%, rgba(255, 40, 90, 0.75) 100%); }
+.vb-lowhp .vb-vignette { opacity: 0.8; animation: vb-heartbeat 1s ease-in-out infinite; }
+
+/* ---- top-left: HP + XP ---- */
+.vb-tl { left: 1.6em; top: 1.3em; display: flex; flex-direction: column; gap: 0.6em; }
+.vb-hp { display: flex; align-items: center; }
+.vb-hp-ic { position: relative; z-index: 1; flex: none; width: 3em; height: 3em; margin-right: -1em; filter: drop-shadow(0.14em 0.16em 0 var(--ink)); }
+.vb-hp-ic svg { width: 100%; height: 100%; }
+.vb-lowhp .vb-hp-ic { animation: vb-beat 0.5s ease-in-out infinite; }
+.vb-bar {
+  position: relative;
+  width: 19em;
+  height: 1.8em;
+  overflow: hidden;
+  background: #2a1f5c;
+  border: 0.18em solid var(--ink);
+  border-radius: 0.35em;
+  transform: skewX(-14deg);
+  box-shadow: 0.24em 0.28em 0 var(--ink);
+}
+.vb-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(90deg, transparent 0 0.9em, rgba(255, 255, 255, 0.05) 0.9em 1.8em);
+}
+.vb-bar-fill,
+.vb-bar-ghost { position: absolute; inset: 0; transform-origin: 0 50%; will-change: transform; }
+.vb-bar-ghost { background: var(--paper); opacity: 0.9; transition: transform 0.45s cubic-bezier(0.5, 0, 0.2, 1) 0.25s; }
+.vb-bar-hp .vb-bar-fill { background: linear-gradient(180deg, #ff86b6 0 30%, var(--hot) 30% 76%, #c61d60 76%); transition: transform 0.12s ease-out; }
+.vb-lowhp .vb-bar-hp .vb-bar-fill { background: linear-gradient(180deg, #ff9a9a 0 30%, #ff2d55 30% 76%, #b3082f 76%); }
+.vb-bar-txt {
+  position: absolute;
+  left: 1.5em;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.2em;
+  font-family: var(--f-disp);
+  font-size: 1.08em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0.07em 0.09em 0 var(--ink), -0.04em -0.04em 0 var(--ink), 0.04em -0.04em 0 var(--ink), -0.04em 0.04em 0 var(--ink);
+}
+.vb-bar-txt b { font-weight: 400; }
+.vb-bar-txt .k { font-size: 0.75em; margin-right: 0.2em; }
+.vb-bar-txt .m { font-size: 0.8em; opacity: 0.9; }
+.vb-xp { display: flex; align-items: center; gap: 0.45em; padding-left: 0.6em; }
+.vb-lv {
+  display: flex;
+  align-items: baseline;
+  gap: 0.12em;
+  padding: 0.16em 0.55em 0.1em;
+  font-family: var(--f-disp);
+  color: var(--ink);
+  background: var(--surf);
+  border: 0.16em solid var(--ink);
+  border-radius: 0.3em;
+  transform: skewX(-14deg);
+  box-shadow: 0.18em 0.2em 0 var(--ink);
+}
+.vb-lv .k { font-size: 0.75em; }
+.vb-lv b { font-weight: 400; font-size: 1.3em; line-height: 1; font-variant-numeric: tabular-nums; }
+.vb-bar-xp { width: 15.2em; height: 1.05em; }
+.vb-bar-xp .vb-bar-fill { background: linear-gradient(180deg, #9af5ff 0 34%, var(--surf) 34% 78%, #0b9fbd 78%); transition: transform 0.25s ease-out; }
+.vb-bar-fill.vb-snap { transition: none; }
+
+/* ---- top-center: timer / score / phase / boss ---- */
+.vb-tc { left: 50%; top: 0.8em; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
+.vb-timer {
+  font-family: var(--f-disp);
+  font-size: 3.4em;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  color: var(--paper);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transform: skewX(-8deg);
+}
+.vb-score {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3em;
+  margin-top: 0.1em;
+  font-family: var(--f-disp);
+  color: var(--volt);
+  white-space: nowrap;
+  transform: skewX(-8deg);
+  text-shadow: 0.07em 0.09em 0 var(--ink), -0.035em -0.035em 0 var(--ink), 0.035em -0.035em 0 var(--ink), -0.035em 0.035em 0 var(--ink);
+}
+.vb-score b { font-weight: 400; font-size: 1.95em; line-height: 1; font-variant-numeric: tabular-nums; }
+.vb-score .k { font-size: 0.85em; color: var(--paper); }
+.vb-phase {
+  margin-top: 0.45em;
+  padding: 0.24em 0.95em 0.26em;
+  font-weight: 700;
+  font-size: 0.95em;
+  letter-spacing: 0.16em;
+  white-space: nowrap;
+  color: var(--volt);
+  background: var(--ink);
+  border-radius: 0.25em;
+  transform: skewX(-12deg);
+  box-shadow: 0.16em 0.18em 0 rgba(0, 0, 0, 0.35);
+}
+.vb-phase.vb-empty { display: none; }
+.vb-phase.vb-soon { color: var(--ink); background: var(--sun); animation: vb-throb 0.5s ease-in-out infinite; }
+.vb-phase.vb-danger { color: var(--paper); background: var(--hot); text-shadow: 0.06em 0.08em 0 var(--ink); box-shadow: 0.16em 0.18em 0 var(--ink); animation: vb-throb 0.7s ease-in-out infinite; }
+.vb-boss { display: none; flex-direction: column; align-items: center; width: 38em; max-width: 44vw; margin-top: 0.6em; }
+.vb-boss.vb-on { display: flex; animation: vb-boss-in 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.vb-boss-name {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  margin-bottom: 0.25em;
+  font-family: var(--f-disp);
+  font-size: 1.4em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--paper);
+  text-shadow: 0.07em 0.09em 0 var(--ink);
+  transform: skewX(-8deg);
+}
+.vb-boss-ic { flex: none; width: 1.25em; height: 1.25em; }
+.vb-boss-ic svg { width: 100%; height: 100%; }
+.vb-boss-bar {
+  position: relative;
+  width: 100%;
+  height: 1.4em;
+  overflow: hidden;
+  background: #2a1030;
+  border: 0.2em solid var(--ink);
+  border-radius: 0.3em;
+  transform: skewX(-18deg);
+  box-shadow: 0 0 0 0.14em var(--hot), 0.3em 0.32em 0 0.14em var(--ink);
+}
+.vb-boss-fill,
+.vb-boss-ghost { position: absolute; inset: 0; transform-origin: 0 50%; will-change: transform; }
+.vb-boss-ghost { background: var(--volt); transition: transform 0.5s cubic-bezier(0.5, 0, 0.2, 1) 0.2s; }
+.vb-boss-fill { background: linear-gradient(180deg, #ff7aa6 0 30%, #ff1f5a 30% 78%, #b3083b 78%); transition: transform 0.1s; }
+.vb-boss-segs { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 calc(5% - 0.14em), var(--ink) calc(5% - 0.14em) 5%); }
+
+/* ---- top-right: minimap + counters ---- */
+.vb-tr { right: 1.7em; top: 1.5em; display: flex; flex-direction: column; align-items: center; gap: 0.8em; }
+.vb-mm { position: relative; width: clamp(128px, 10.2em, 200px); aspect-ratio: 1 / 1; }
+.vb-mm canvas { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; }
+.vb-mm-ring {
+  position: absolute;
+  inset: -0.34em;
+  border: 0.34em solid var(--ink);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 0.14em var(--sun), 0.32em 0.36em 0 0 var(--ink);
+}
+.vb-mm::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -0.95em;
+  width: 1em;
+  height: 0.7em;
+  margin-left: -0.5em;
+  background: var(--sun);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.vb-counters { display: flex; gap: 0.45em; }
+.vb-count {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  padding: 0.18em 0.7em 0.18em 0.3em;
+  background: var(--ink);
+  border-radius: 0.3em;
+  transform: skewX(-12deg);
+  box-shadow: 0.16em 0.18em 0 rgba(0, 0, 0, 0.4);
+}
+.vb-count svg { width: 1.55em; height: 1.55em; flex: none; }
+.vb-count b { min-width: 1.4em; font-family: var(--f-disp); font-weight: 400; font-size: 1.3em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.vb-count-g b { color: var(--volt); }
+
+/* ---- bottom-left: loadout ---- */
+.vb-bl { left: 1.6em; bottom: 1.4em; display: flex; flex-direction: column; gap: 0.55em; }
+.vb-slots { display: flex; gap: 0.4em; }
+.vb-slot {
+  position: relative;
+  width: 3.5em;
+  height: 3.5em;
+  background: linear-gradient(160deg, #5a48b6, #2e2370);
+  border: 0.17em solid var(--ink);
+  border-radius: 0.4em;
+  transform: skewX(-10deg);
+  box-shadow: 0.2em 0.22em 0 var(--ink);
+}
+.vb-slots-t .vb-slot { width: 2.85em; height: 2.85em; background: linear-gradient(160deg, #2f6aa3, #1b2c63); }
+.vb-slot.vb-empty { background: rgba(20, 15, 46, 0.42); border: 0.14em dashed rgba(255, 246, 229, 0.25); box-shadow: none; }
+.vb-slot-ic { position: absolute; left: 0.2em; right: 0.2em; top: 0.14em; bottom: 0.56em; transform: skewX(10deg); }
+.vb-slot-ic svg { width: 100%; height: 100%; }
+.vb-slot-pips { position: absolute; left: 0.28em; right: 0.28em; bottom: 0.2em; height: 0.3em; display: flex; gap: 0.1em; }
+.vb-slot-pips i { flex: 1; background: rgba(255, 246, 229, 0.2); border-radius: 0.08em; }
+.vb-slot-pips i.on { background: var(--volt); }
+.vb-slot-pips.vb-num { height: auto; bottom: 0.05em; justify-content: center; font-family: var(--f-disp); font-size: 0.62em; line-height: 1; color: var(--volt); }
+.vb-slot.vb-max { border-color: var(--ink); box-shadow: 0 0 0 0.13em var(--volt), 0.22em 0.24em 0 0.13em var(--ink); }
+.vb-slot.vb-max .vb-slot-pips i { background: var(--sun); }
+.vb-slot.vb-max::after {
+  content: "MAX";
+  position: absolute;
+  top: -0.7em;
+  right: -0.5em;
+  padding: 0.12em 0.3em 0.08em;
+  font-family: var(--f-disp);
+  font-size: 0.55em;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--volt);
+  border: 0.14em solid var(--ink);
+  border-radius: 0.25em;
+}
+
+/* ---- bottom-center: THE MOMENTUM METER ---- */
+.vb-hud { --mc: var(--surf); --mc2: #0b8fae; }
+.vb-hud[data-tier="1"] { --mc: var(--volt); --mc2: #d19c00; }
+.vb-hud[data-tier="2"] { --mc: var(--sun); --mc2: #b94600; }
+.vb-hud[data-tier="3"],
+.vb-hud[data-tier="4"] { --mc: var(--hot); --mc2: #a90f52; }
+.vb-bc { left: 50%; bottom: 1.5em; transform: translateX(-50%); }
+.vb-mom { position: relative; z-index: 0; display: flex; align-items: flex-end; padding-top: 2.4em; }
+.vb-mom-panel {
+  position: relative;
+  width: 24em;
+  padding: 0.5em 2.2em 0.6em 1.3em;
+  background: linear-gradient(180deg, #382d80 0%, var(--night) 42%, var(--ink) 100%);
+  border: 0.2em solid var(--ink);
+  border-radius: 0.5em;
+  transform: skewX(-16deg);
+  box-shadow: 0 0 0 0.16em var(--mc), 0.45em 0.5em 0 0.16em var(--ink);
+  transition: box-shadow 0.2s;
+}
+.vb-mom-panel::after {
+  content: "";
+  position: absolute;
+  inset: -0.5em;
+  border: 0.22em solid var(--mc);
+  border-radius: 0.8em;
+  opacity: 0;
+  pointer-events: none;
+}
+.vb-ram .vb-mom-panel::after { animation: vb-ring 0.6s ease-out infinite; }
+.vb-mom-top { display: flex; align-items: baseline; gap: 0.3em; white-space: nowrap; }
+.vb-mom-kmh {
+  min-width: 2.05em;
+  font-family: var(--f-disp);
+  font-size: 2.55em;
+  line-height: 0.95;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--paper);
+  text-shadow: 0.06em 0.08em 0 var(--ink);
+}
+.vb-mom-unit { font-weight: 700; font-size: 0.95em; letter-spacing: 0.1em; color: var(--mc); }
+.vb-mom-lab { margin-left: auto; font-weight: 700; font-size: 0.7em; letter-spacing: 0.32em; color: var(--lav); }
+.vb-mom-segs { display: flex; align-items: flex-end; gap: 0.16em; height: 1.95em; margin-top: 0.28em; }
+.vb-mom-segs i { flex: 1; height: calc(0.45em + var(--k) * 1.5em); background: rgba(255, 246, 229, 0.1); border-radius: 0.1em; }
+.vb-mom-segs i.on { background: linear-gradient(180deg, #fff 0 16%, var(--mc) 16%); box-shadow: inset 0 -0.2em 0 var(--mc2); }
+.vb-mom-segs i.pk { background: var(--paper); box-shadow: none; }
+.vb-mom-track { position: relative; height: 0.42em; margin-top: 0.38em; overflow: hidden; background: rgba(255, 246, 229, 0.1); border-radius: 0.2em; }
+.vb-mom-tfill { position: absolute; inset: 0; transform-origin: 0 50%; transform: scaleX(0); background: var(--mc); transition: transform 0.15s ease-out; will-change: transform; }
+.vb-mom-track i { position: absolute; top: 0; bottom: 0; width: 0.18em; background: var(--ink); }
+.vb-mom-track i.r { background: var(--hot); width: 0.24em; }
+.vb-mom-mult {
+  position: relative;
+  z-index: 2;
+  width: 8.6em;
+  margin-left: -2.2em;
+  margin-bottom: -0.55em;
+  display: flex;
+  align-items: baseline;
+  font-family: var(--f-disp);
+  line-height: 0.86;
+  color: var(--mc);
+  white-space: nowrap;
+  transform: skewX(-10deg);
+  transform-origin: 30% 100%;
+}
+.vb-mom-x { font-size: 2.6em; --otw: 0.22em; }
+.vb-mom-n { font-size: 5.4em; font-variant-numeric: tabular-nums; --otw: 0.16em; --otx: 0.045em; --oty: 0.06em; }
+.vb-mom-flames {
+  position: absolute;
+  left: 0.6em;
+  width: 24.5em;
+  bottom: 5.6em;
+  height: 3.4em;
+  z-index: -1;
+  opacity: 0;
+  transform: skewX(-16deg) scaleY(0.3);
+  transform-origin: 50% 100%;
+  transition: opacity 0.2s, transform 0.3s cubic-bezier(0.2, 1.5, 0.4, 1);
+  pointer-events: none;
+}
+.vb-ram .vb-mom-flames { opacity: 1; transform: skewX(-16deg) scaleY(1); }
+.vb-hud[data-tier="4"] .vb-mom-flames { transform: skewX(-16deg) scaleY(1.5); }
+.vb-fl { position: absolute; left: 0; bottom: 0; width: 100%; height: 100%; transform-origin: 50% 100%; }
+.vb-fl-m { height: 78%; }
+.vb-fl-f { height: 52%; }
+.vb-ram .vb-fl-b { animation: vb-flick 0.34s ease-in-out infinite alternate; }
+.vb-ram .vb-fl-m { animation: vb-flick 0.25s ease-in-out infinite alternate-reverse; }
+.vb-ram .vb-fl-f { animation: vb-flick 0.18s ease-in-out infinite alternate; }
+.vb-mom-ram {
+  position: absolute;
+  right: 7.4em;
+  top: 0.1em;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 0.15em;
+  padding: 0.12em 0.6em 0.12em 0.3em;
+  font-family: var(--f-disp);
+  font-size: 1.3em;
+  letter-spacing: 0.04em;
+  color: var(--volt);
+  background: var(--hot);
+  border: 0.15em solid var(--ink);
+  border-radius: 0.3em;
+  transform: rotate(-6deg) skewX(-10deg);
+  box-shadow: 0.16em 0.18em 0 var(--ink);
+  text-shadow: 0.06em 0.08em 0 var(--ink);
+  visibility: hidden;
+  opacity: 0;
+}
+.vb-mom-ram svg { width: 1.3em; height: 1.3em; }
+.vb-ram .vb-mom-ram { visibility: visible; opacity: 1; animation: vb-ram-pulse 0.42s ease-in-out infinite alternate; }
+.vb-hud[data-tier="4"] .vb-mom { animation: vb-shake 0.1s linear infinite; }
+
+.vb-fps {
+  position: absolute;
+  right: 0.8em;
+  bottom: 0.6em;
+  display: none;
+  padding: 0.3em 0.5em;
+  font-weight: 700;
+  font-size: 0.75em;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  font-variant-numeric: tabular-nums;
+  color: var(--lime);
+  background: rgba(20, 15, 46, 0.7);
+  border-radius: 0.2em;
+}
+.vb-fps.vb-on { display: block; }
+
+/* ---- prompt / announce / toasts ---- */
+.vb-prompt {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--hu) * 11.8);
+  z-index: 3;
+  max-width: 90vw;
+  padding: 0.45em 1.2em 0.5em;
+  font-size: calc(var(--hu) * 1.05);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--paper);
+  background: var(--ink);
+  border: 0.16em solid var(--volt);
+  border-radius: 0.3em;
+  box-shadow: 0.22em 0.26em 0 rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transform: translate(-50%, 0.6em) skewX(-10deg);
+  transition: opacity 0.15s, transform 0.2s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+.vb-prompt.vb-on { opacity: 1; transform: translate(-50%, 0) skewX(-10deg); }
+.vb-prompt.vb-warn { color: var(--hot); border-color: var(--hot); }
+
+.vb-announce { position: absolute; left: 0; right: 0; top: 29%; z-index: 5; display: flex; justify-content: center; font-size: var(--mu); }
+.vb-ann { --ac: var(--sun); position: relative; display: flex; flex-direction: column; align-items: center; padding: 0.5em 0; }
+.vb-ann-band {
+  position: absolute;
+  left: 50%;
+  top: 2%;
+  bottom: -14%;
+  width: 100vw;
+  margin-left: -50vw;
+  background: rgba(20, 15, 46, 0.8);
+  border-top: 0.3em solid var(--ac);
+  border-bottom: 0.3em solid var(--ac);
+  transform: skewY(-1.5deg);
+  animation: vb-band 0.32s cubic-bezier(0.2, 1, 0.3, 1) both;
+}
+.vb-ann-t {
+  font-family: var(--f-disp);
+  font-size: clamp(40px, 8.5vh, 112px);
+  line-height: 1.02;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--ac);
+  transform: skewX(-10deg);
+  animation: vb-slam 0.5s cubic-bezier(0.2, 1.6, 0.35, 1) both;
+}
+.vb-ann-sub {
+  position: relative;
+  margin-top: 0.3em;
+  font-weight: 700;
+  font-size: 1.15em;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--paper);
+  text-shadow: 0.08em 0.1em 0 var(--ink);
+  animation: vb-rise 0.4s 0.18s ease-out both;
+}
+.vb-ann.vb-out { animation: vb-ann-out 0.26s ease-in forwards; }
+
+.vb-toasts { position: absolute; right: 1.7em; top: 46%; z-index: 30; display: flex; flex-direction: column; align-items: flex-end; gap: 0.45em; font-size: var(--hu); }
+.vb-toast {
+  --tc: var(--volt);
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+  max-width: 24em;
+  padding: 0.38em 0.9em 0.4em 0.75em;
+  font-family: var(--f-disp);
+  font-size: 1.15em;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  color: var(--tc);
+  background: var(--ink);
+  border-left: 0.4em solid var(--tc);
+  border-radius: 0.2em;
+  transform: skewX(-12deg);
+  box-shadow: 0.22em 0.24em 0 rgba(0, 0, 0, 0.45);
+  animation: vb-toast-in 0.3s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+.vb-toast-ic { flex: none; width: 1.3em; height: 1.3em; }
+.vb-toast-ic svg { width: 100%; height: 100%; }
+.vb-toast-n { font-size: 0.85em; color: var(--paper); }
+.vb-toast-n:empty { display: none; }
+.vb-toast.vb-out { animation: vb-toast-out 0.24s ease-in forwards; }
+
+/* =====================================================================
+   LEVEL UP / CHEST / SHRINE
+   ===================================================================== */
+.vb-lu { --lc: var(--sun); }
+.vb-lu[data-kind="chest"] { --lc: var(--volt); }
+.vb-lu[data-kind="shrine"] { --lc: var(--surf); }
+.vb-lu-rays {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 130vh;
+  height: 130vh;
+  margin: -65vh 0 0 -65vh;
+  opacity: 0.2;
+  background: repeating-conic-gradient(from 0deg, var(--lc) 0deg 6deg, transparent 6deg 20deg);
+  -webkit-mask-image: radial-gradient(closest-side, #000 20%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 20%, transparent 100%);
+  animation: vb-spin 36s linear infinite;
+  pointer-events: none;
+}
+.vb-lu-inner { position: relative; margin: auto; display: flex; flex-direction: column; align-items: center; gap: 1.3em; padding: 1.6em 1em 2em; }
+.vb-lu-head { display: flex; flex-direction: column; align-items: center; gap: 0.55em; animation: vb-drop 0.45s cubic-bezier(0.2, 1.5, 0.4, 1) both; }
+.vb-lu-title {
+  font-family: var(--f-disp);
+  font-weight: 400;
+  font-size: clamp(44px, 9vh, 104px);
+  line-height: 1;
+  text-align: center;
+  color: var(--lc);
+  transform: skewX(-10deg) rotate(-2deg);
+}
+.vb-lu-sub { display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 0.4em; font-weight: 700; font-size: 0.95em; letter-spacing: 0.2em; color: var(--paper); text-shadow: 0.08em 0.1em 0 var(--ink); }
+.vb-lu-or { opacity: 0.75; margin-left: 0.3em; }
+.vb-cards { display: flex; justify-content: center; align-items: stretch; gap: clamp(16px, 2.2vw, 42px); padding: 0.6em 1.2em 1em; }
+.vb-card {
+  --rc: var(--r-common);
+  --rg: rgba(201, 196, 217, 0.26);
+  position: relative;
+  width: clamp(220px, 20vw, 330px);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  color: var(--paper);
+  text-align: center;
+  cursor: pointer;
+  outline: none;
+  animation: vb-deal 0.55s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+  animation-delay: calc(var(--i) * 90ms + 80ms);
+  transition: opacity 0.2s, scale 0.2s;
+}
+.vb-r-uncommon { --rc: var(--r-uncommon); --rg: rgba(107, 227, 107, 0.3); }
+.vb-r-rare { --rc: var(--r-rare); --rg: rgba(61, 165, 255, 0.36); }
+.vb-r-epic { --rc: var(--r-epic); --rg: rgba(180, 92, 255, 0.4); }
+.vb-r-legendary { --rc: var(--r-legendary); --rg: rgba(255, 176, 32, 0.46); }
+.vb-card-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  padding: 0 0 1.3em;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--rg) 0%, rgba(31, 23, 71, 0) 46%), linear-gradient(180deg, var(--night) 0%, var(--ink) 100%);
+  border: 0.2em solid var(--ink);
+  border-radius: 0.75em;
+  transform: skewX(-6deg);
+  box-shadow: 0 0 0 0.22em var(--rc), 0.55em 0.6em 0 0.22em var(--ink);
+  transition: transform 0.18s cubic-bezier(0.3, 1.6, 0.5, 1), box-shadow 0.18s;
+}
+.vb-card:hover .vb-card-body,
+.vb-card:focus-visible .vb-card-body { transform: skewX(-6deg) translateY(-0.7em) rotate(-1.2deg); box-shadow: 0 0 0 0.22em var(--rc), 0.8em 1.1em 0 0.22em var(--ink); }
+.vb-card:focus-visible .vb-card-body { box-shadow: 0 0 0 0.22em var(--rc), 0 0 0 0.5em var(--volt), 0.8em 1.1em 0 0.5em var(--ink); }
+.vb-card:active .vb-card-body { transform: skewX(-6deg) translateY(-0.2em) scale(0.98); }
+.vb-card-band {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.45em 0.7em 0.4em;
+  font-family: var(--f-disp);
+  font-size: 1em;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  background: var(--rc);
+  border-bottom: 0.2em solid var(--ink);
+}
+.vb-card-key { display: inline-flex; align-items: center; justify-content: center; width: 1.55em; height: 1.55em; font-size: 0.9em; color: var(--paper); background: var(--ink); border-radius: 0.25em; }
+.vb-card-rar { flex: 1; text-align: left; }
+.vb-card-kind { font-family: var(--f-ui); font-weight: 700; font-size: 0.72em; letter-spacing: 0.18em; opacity: 0.8; }
+.vb-card-ic { position: relative; display: flex; align-items: center; justify-content: center; width: 7.4em; height: 7.4em; margin: 0.9em 0 0.35em; }
+.vb-card-ic .vb-burst { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--rc); transition: transform 0.4s cubic-bezier(0.3, 1.6, 0.5, 1); }
+.vb-card:hover .vb-burst { transform: rotate(22deg) scale(1.06); }
+.vb-r-legendary .vb-card-ic .vb-burst { animation: vb-spin 9s linear infinite; }
+.vb-card-ic > svg:not(.vb-burst) { position: relative; width: 62%; height: 62%; filter: drop-shadow(0.1em 0.12em 0 var(--ink)); }
+.vb-card-name {
+  padding: 0 0.6em;
+  font-family: var(--f-disp);
+  font-size: 1.75em;
+  line-height: 1.02;
+  color: var(--paper);
+  text-shadow: 0.06em 0.08em 0 var(--ink);
+  overflow-wrap: anywhere;
+}
+.vb-card-lv {
+  margin-top: 0.5em;
+  padding: 0.22em 0.75em 0.2em;
+  font-weight: 700;
+  font-size: 0.9em;
+  letter-spacing: 0.1em;
+  color: var(--paper);
+  background: #3b2e7e;
+  border: 0.14em solid var(--ink);
+  border-radius: 1em;
+}
+.vb-card-lv:empty { display: none; }
+.vb-card-lv.vb-new { font-family: var(--f-disp); font-weight: 400; font-size: 1.05em; letter-spacing: 0.06em; color: var(--ink); background: var(--volt); rotate: -4deg; animation: vb-throb 0.9s ease-in-out infinite; }
+.vb-card-desc { align-self: stretch; display: flex; flex-direction: column; gap: 0.4em; margin-top: 0.9em; padding: 0 1.25em; text-align: left; }
+.vb-desc-line { position: relative; display: block; padding-left: 1em; font-size: 0.98em; line-height: 1.25; color: #ece6ff; }
+.vb-desc-line::before { content: ""; position: absolute; left: 0; top: 0.36em; width: 0.5em; height: 0.55em; background: var(--rc); clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.vb-desc-line b { font-weight: 700; color: var(--lime); }
+.vb-holo {
+  position: absolute;
+  inset: -30% -70%;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent 38%, rgba(255, 236, 160, 0.5) 46%, rgba(140, 255, 90, 0.28) 49.5%, rgba(26, 227, 255, 0.32) 53%, rgba(255, 61, 139, 0.26) 56.5%, transparent 63%);
+  mix-blend-mode: screen;
+  animation: vb-holo 2.6s ease-in-out infinite;
+}
+.vb-cards.vb-has-pick .vb-card:not(.vb-picked) { opacity: 0.3; scale: 0.94; }
+.vb-card.vb-picked .vb-card-body { transform: skewX(-6deg) translateY(-1em) scale(1.05); box-shadow: 0 0 0 0.22em var(--rc), 0 0 0 0.55em var(--volt), 0.8em 1.1em 0 0.55em var(--ink); }
+.vb-lu-foot { display: flex; justify-content: center; animation: vb-rise 0.4s 0.4s ease-out both; }
+
+/* =====================================================================
+   PAUSE + SETTINGS
+   ===================================================================== */
+.vb-pause { z-index: 11; }
+.vb-pause-panel { margin: auto; width: min(31em, calc(100vw - 32px)); animation: vb-pop-in 0.3s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.vb-psums { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.45em; margin-bottom: 0.8em; }
+.vb-psum { display: flex; flex-direction: column; align-items: center; padding: 0.35em 0.2em 0.3em; background: rgba(20, 15, 46, 0.65); border-radius: 0.3em; transform: skewX(-8deg); }
+.vb-psum .k { font-size: 0.64em; letter-spacing: 0.2em; color: var(--lav); }
+.vb-psum b { font-family: var(--f-disp); font-weight: 400; font-size: 1.25em; font-variant-numeric: tabular-nums; }
+.vb-pbuild { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.35em; margin-bottom: 1.1em; }
+.vb-pbuild:empty { display: none; }
+.vb-pb { position: relative; width: 2.4em; height: 2.4em; padding: 0.2em; background: #3b2e7e; border: 0.13em solid var(--ink); border-radius: 0.3em; transform: skewX(-8deg); }
+.vb-pb svg { width: 100%; height: 100%; }
+.vb-pb b {
+  position: absolute;
+  right: -0.35em;
+  bottom: -0.4em;
+  padding: 0.05em 0.25em 0;
+  font-family: var(--f-disp);
+  font-weight: 400;
+  font-size: 0.68em;
+  line-height: 1.1;
+  color: var(--ink);
+  background: var(--volt);
+  border: 0.1em solid var(--ink);
+  border-radius: 0.2em;
+}
+.vb-pause-btns { display: flex; flex-direction: column; align-items: stretch; gap: 0.85em; }
+.vb-pause-btns > .vb-btn { width: 100%; }
+.vb-inline-set { display: none; }
+.vb-inline-set.vb-on { display: block; animation: vb-rise 0.25s ease-out both; }
+.vb-hint { display: flex; align-items: center; justify-content: center; gap: 0.5em; margin-top: 1.1em; font-size: 0.78em; letter-spacing: 0.16em; color: var(--lav); }
+
+.vb-set { display: flex; flex-direction: column; gap: 0.55em; padding: 0.85em 1em; background: rgba(20, 15, 46, 0.6); border: 0.14em solid rgba(255, 246, 229, 0.08); border-radius: 0.5em; }
+.vb-set-row { display: grid; grid-template-columns: 8.4em minmax(0, 1fr) 3.8em; align-items: center; gap: 0.8em; min-height: 2.1em; }
+.vb-set-lab { font-weight: 700; font-size: 0.84em; letter-spacing: 0.14em; color: var(--lav); }
+.vb-set-val { font-family: var(--f-disp); font-weight: 400; font-size: 1em; text-align: right; font-variant-numeric: tabular-nums; color: var(--volt); }
+.vb-range { --p: 50%; width: 100%; height: 1.6em; margin: 0; background: transparent; cursor: pointer; -webkit-appearance: none; appearance: none; }
+.vb-range:focus { outline: none; }
+.vb-range:focus-visible { outline: 0.16em solid var(--volt); outline-offset: 0.25em; border-radius: 0.3em; }
+.vb-range::-webkit-slider-runnable-track { height: 0.72em; background: linear-gradient(90deg, var(--sun) var(--p), #3a2e70 var(--p)); border: 0.14em solid var(--ink); border-radius: 0.36em; }
+.vb-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 1.15em;
+  height: 1.45em;
+  margin-top: -0.5em;
+  background: var(--volt);
+  border: 0.16em solid var(--ink);
+  border-radius: 0.25em;
+  box-shadow: 0.12em 0.14em 0 var(--ink);
+  transform: skewX(-10deg);
+}
+.vb-range::-moz-range-track { height: 0.5em; background: #3a2e70; border: 0.14em solid var(--ink); border-radius: 0.36em; }
+.vb-range::-moz-range-progress { height: 0.5em; background: var(--sun); border: 0.14em solid var(--ink); border-radius: 0.36em; }
+.vb-range::-moz-range-thumb { width: 0.9em; height: 1.2em; background: var(--volt); border: 0.16em solid var(--ink); border-radius: 0.25em; box-shadow: 0.12em 0.14em 0 var(--ink); }
+.vb-switch {
+  position: relative;
+  justify-self: start;
+  width: 3.4em;
+  height: 1.75em;
+  margin: 0;
+  padding: 0;
+  background: #3a2e70;
+  border: 0.16em solid var(--ink);
+  border-radius: 1em;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+  transition: background 0.15s;
+}
+.vb-switch::after {
+  content: "";
+  position: absolute;
+  top: 0.12em;
+  left: 0.14em;
+  width: 1.2em;
+  height: 1.2em;
+  background: var(--paper);
+  border: 0.14em solid var(--ink);
+  border-radius: 50%;
+  transition: transform 0.16s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.vb-switch[aria-checked="true"] { background: var(--lime); }
+.vb-switch[aria-checked="true"]::after { transform: translateX(1.62em); }
+.vb-switch:focus-visible,
+.vb-seg button:focus-visible { outline: 0.16em solid var(--volt); outline-offset: 0.22em; }
+.vb-seg { display: inline-flex; justify-self: start; overflow: hidden; border: 0.15em solid var(--ink); border-radius: 0.35em; transform: skewX(-10deg); box-shadow: 0.15em 0.18em 0 var(--ink); }
+.vb-seg button { margin: 0; padding: 0.38em 0.95em; font-family: var(--f-disp); font-weight: 400; font-size: 0.95em; color: var(--lav); background: #3a2e70; border: 0; cursor: pointer; appearance: none; -webkit-appearance: none; outline: none; }
+.vb-seg button + button { border-left: 0.15em solid var(--ink); }
+.vb-seg button[aria-pressed="true"] { color: var(--paper); background: var(--sun); text-shadow: 0.05em 0.07em 0 var(--ink); }
+
+/* =====================================================================
+   TITLE
+   ===================================================================== */
+.vb-title { z-index: 20; pointer-events: auto; overflow-x: hidden; overflow-y: auto; font-size: var(--mu); }
+.vb-title.vb-on { display: block; }
+.vb-title-tint {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(100deg, rgba(20, 15, 46, 0.9) 0%, rgba(20, 15, 46, 0.62) 34%, rgba(20, 15, 46, 0.08) 62%, rgba(20, 15, 46, 0.4) 100%),
+    linear-gradient(0deg, rgba(20, 15, 46, 0.85) 0%, rgba(20, 15, 46, 0) 26%);
+}
+.vb-title-tint::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 122, 26, 0.26) 1.3px, transparent 1.8px);
+  background-size: 12px 12px;
+  -webkit-mask-image: linear-gradient(100deg, #000 0%, transparent 48%);
+  mask-image: linear-gradient(100deg, #000 0%, transparent 48%);
+}
+.vb-title-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(270px, 24em);
+  align-items: center;
+  gap: clamp(20px, 4vw, 90px);
+  min-height: 100%;
+  max-width: 1760px;
+  margin: 0 auto;
+  padding: clamp(20px, 5vh, 70px) clamp(16px, 5vw, 110px) 4.8em;
+}
+.vb-title-main { container-type: inline-size; display: flex; flex-direction: column; align-items: flex-start; gap: 1.25em; min-width: 0; }
+.vb-logo-wrap { position: relative; z-index: 0; max-width: 100%; }
+.vb-logo {
+  display: flex;
+  font-family: var(--f-disp);
+  font-weight: 400;
+  font-size: clamp(44px, min(15.5cqi, 19vh), 210px);
+  line-height: 0.92;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  transform: skewX(-10deg);
+  transform-origin: 0 100%;
+}
+.vb-lt { display: inline-block; animation: vb-lt-in 0.65s cubic-bezier(0.2, 1.45, 0.4, 1) both; animation-delay: calc(var(--i) * 55ms + 120ms); }
+.vb-lt-bob { display: inline-block; --otw: 0.15em; --otx: 0.05em; --oty: 0.085em; animation: vb-bob 2.8s ease-in-out infinite; animation-delay: calc(var(--i) * -0.18s); }
+.vb-lt-f {
+  display: inline-block;
+  color: var(--sun);
+  background: linear-gradient(180deg, #ffc27a 0 27%, var(--sun) 27% 68%, #e2560c 68%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.vb-bonk .vb-lt-f { color: var(--volt); background-image: linear-gradient(180deg, #fff8c4 0 27%, var(--volt) 27% 68%, #f0ae00 68%); }
+.vb-streaks { position: absolute; left: -14%; right: 30%; top: 4%; bottom: 14%; z-index: -1; pointer-events: none; }
+.vb-streaks i { position: absolute; left: 0; width: 46%; height: 0.42em; opacity: 0; border-radius: 1em; background: linear-gradient(90deg, rgba(255, 122, 26, 0), var(--sun)); animation: vb-streak 1.3s linear infinite; }
+.vb-streaks i:nth-child(1) { top: 10%; }
+.vb-streaks i:nth-child(2) { top: 28%; width: 62%; height: 0.28em; background: linear-gradient(90deg, rgba(255, 225, 77, 0), var(--volt)); animation-delay: -0.4s; animation-duration: 1s; }
+.vb-streaks i:nth-child(3) { top: 47%; width: 38%; height: 0.55em; background: linear-gradient(90deg, rgba(26, 227, 255, 0), var(--surf)); animation-delay: -0.9s; animation-duration: 1.5s; }
+.vb-streaks i:nth-child(4) { top: 63%; width: 55%; height: 0.3em; animation-delay: -0.2s; animation-duration: 1.15s; }
+.vb-streaks i:nth-child(5) { top: 80%; width: 44%; height: 0.36em; background: linear-gradient(90deg, rgba(255, 61, 139, 0), var(--hot)); animation-delay: -0.7s; animation-duration: 1.35s; }
+.vb-streaks i:nth-child(6) { top: 94%; width: 30%; height: 0.24em; background: linear-gradient(90deg, rgba(255, 225, 77, 0), var(--volt)); animation-delay: -1.1s; animation-duration: 0.95s; }
+.vb-tagline {
+  display: inline-block;
+  margin-top: 0.55em;
+  padding: 0.28em 0.9em 0.3em;
+  background: var(--ink);
+  border-radius: 0.25em;
+  transform: skewX(-12deg);
+  box-shadow: 0.25em 0.3em 0 var(--hot);
+  animation: vb-tag-in 0.5s 0.8s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+.vb-tagline span { display: block; font-family: var(--f-disp); font-size: 1.8em; line-height: 1.05; letter-spacing: 0.08em; color: var(--paper); }
+.vb-tagline em { font-style: normal; color: var(--hot); }
+.vb-challenge {
+  display: none;
+  align-items: center;
+  gap: 0.6em;
+  max-width: 100%;
+  padding: 0.45em 1.1em 0.45em 0.55em;
+  font-weight: 700;
+  font-size: 1.05em;
+  letter-spacing: 0.05em;
+  color: var(--paper);
+  background: var(--hot);
+  border: 0.16em solid var(--ink);
+  border-radius: 0.35em;
+  transform: skewX(-10deg);
+  box-shadow: 0.26em 0.3em 0 var(--ink);
+  text-shadow: 0.06em 0.08em 0 var(--ink);
+  animation: vb-wiggle 2.6s ease-in-out 1.2s infinite;
+}
+.vb-challenge.vb-on { display: inline-flex; }
+.vb-challenge-ic { flex: none; width: 2em; height: 2em; }
+.vb-challenge-ic svg { width: 100%; height: 100%; }
+.vb-menu { display: flex; flex-direction: column; align-items: flex-start; gap: 1em; margin-top: 0.3em; }
+.vb-menu > .vb-btn { animation: vb-slide-in 0.45s cubic-bezier(0.2, 1.3, 0.4, 1) both; }
+.vb-menu > .vb-btn:nth-child(1) { animation-delay: 0.55s; }
+.vb-menu > .vb-btn:nth-child(2) { margin-left: 1em; animation-delay: 0.62s; }
+.vb-menu-row { display: flex; flex-wrap: wrap; gap: 0.85em; margin-left: 2em; animation: vb-slide-in 0.45s 0.69s cubic-bezier(0.2, 1.3, 0.4, 1) both; }
+.vb-btn-xl { min-width: min(100%, 16.5em); }
+.vb-side { min-width: 0; }
+.vb-bests-card { padding: 1.3em 1.5em 1.2em; animation: vb-rise 0.5s 0.6s ease-out both; }
+.vb-bests { display: flex; flex-direction: column; gap: 0.45em; padding: 0; list-style: none; }
+.vb-best {
+  display: grid;
+  grid-template-columns: 1.9em minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.6em;
+  padding: 0.42em 0.6em;
+  background: rgba(20, 15, 46, 0.6);
+  border-left: 0.3em solid #4a3aa0;
+  border-radius: 0.35em;
+}
+.vb-best:first-child { background: rgba(255, 225, 77, 0.1); border-left-color: var(--volt); }
+.vb-best-rank { grid-row: span 2; font-family: var(--f-disp); font-size: 1.5em; line-height: 1; text-align: center; color: var(--lav); }
+.vb-best:first-child .vb-best-rank { color: var(--volt); }
+.vb-best-score { font-family: var(--f-disp); font-size: 1.35em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.vb-best-meta { font-size: 0.72em; letter-spacing: 0.08em; color: var(--lav); overflow-wrap: anywhere; }
+.vb-best.vb-me { background: rgba(255, 61, 139, 0.18); border-left-color: var(--hot); }
+.vb-best.vb-me .vb-best-score::after { content: " ← YOU"; font-family: var(--f-ui); font-weight: 700; font-size: 0.55em; letter-spacing: 0.14em; color: var(--hot); }
+.vb-daily-note { margin-top: 0.9em; font-size: 0.72em; letter-spacing: 0.12em; text-transform: uppercase; color: var(--lav); }
+.vb-footer { position: relative; margin-top: -3.4em; padding: 0 16px 1.2em; font-size: 0.7em; letter-spacing: 0.14em; text-align: center; text-transform: uppercase; color: rgba(255, 246, 229, 0.62); }
+
+.vb-sheet { position: fixed; inset: 0; z-index: 5; display: none; overflow-y: auto; padding: 16px; background: rgba(20, 15, 46, 0.76); }
+.vb-sheet.vb-on { display: flex; animation: vb-in 0.18s ease-out both; }
+.vb-sheet-panel { margin: auto; width: min(64em, 100%); animation: vb-pop-in 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.vb-sheet-narrow { width: min(34em, 100%); }
+.vb-sheet-foot { display: flex; justify-content: center; margin-top: 1.4em; }
+.vb-how { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.3em 1.8em; }
+.vb-how h3 { margin-bottom: 0.65em; font-family: var(--f-disp); font-weight: 400; font-size: 1.3em; letter-spacing: 0.05em; color: var(--volt); transform: skewX(-8deg); }
+.vb-keys { display: flex; flex-direction: column; gap: 0.6em; }
+.vb-keys > div { display: grid; grid-template-columns: 7.8em minmax(0, 1fr); align-items: center; gap: 0.7em; }
+.vb-keys dt { display: flex; gap: 0.2em; }
+.vb-keys dd { font-size: 0.92em; line-height: 1.3; color: #ece6ff; }
+.vb-keys dd b { color: var(--hot); }
+.vb-rules { display: flex; flex-direction: column; gap: 0.62em; padding: 0; list-style: none; }
+.vb-rules li { display: grid; grid-template-columns: 5.2em minmax(0, 1fr); align-items: baseline; gap: 0.6em; font-size: 0.92em; line-height: 1.3; color: #ece6ff; }
+.vb-rules b { font-family: var(--f-disp); font-weight: 400; font-size: 1.05em; letter-spacing: 0.03em; color: var(--surf); }
+.vb-rules b.hot,
+.vb-rules em { font-style: normal; color: var(--hot); }
+.vb-how-callout {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.45em;
+  margin-top: 0.5em;
+  padding: 0.5em 1em;
+  font-family: var(--f-disp);
+  font-size: 1.6em;
+  color: var(--paper);
+  background: var(--ink);
+  border-radius: 0.4em;
+  transform: skewX(-8deg);
+  box-shadow: 0.2em 0.25em 0 var(--sun);
+}
+.vb-how-callout .k { color: var(--volt); }
+.vb-how-callout .m { color: var(--sun); }
+
+/* =====================================================================
+   GAME OVER
+   ===================================================================== */
+.vb-over { z-index: 12; }
+.vb-over-bg { position: fixed; inset: 0; background: radial-gradient(ellipse at 28% 30%, rgba(255, 61, 139, 0.24), rgba(255, 61, 139, 0) 60%), rgba(20, 15, 46, 0.88); }
+.vb-over-bg::before,
+.vb-over-bg::after {
+  content: "";
+  position: absolute;
+  left: -5%;
+  right: -5%;
+  height: 1.1em;
+  background: repeating-linear-gradient(-45deg, var(--volt) 0 1em, var(--ink) 1em 2em);
+  opacity: 0.9;
+}
+.vb-over-bg::before { top: 0.9em; transform: rotate(-1.2deg); }
+.vb-over-bg::after { bottom: 0.9em; transform: rotate(-1.2deg); }
+.vb-over-wrap {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 2em 3em;
+  width: min(78em, 100%);
+  margin: auto;
+  padding: 3.2em clamp(16px, 3vw, 48px);
+}
+.vb-over-left { display: flex; flex-direction: column; align-items: flex-start; gap: 0.9em; min-width: 0; }
+.vb-over-mode { padding: 0.25em 0.7em; font-weight: 700; font-size: 0.85em; letter-spacing: 0.3em; color: var(--surf); background: var(--ink); border-radius: 0.2em; transform: skewX(-10deg); }
+.vb-bonked {
+  font-family: var(--f-disp);
+  font-weight: 400;
+  font-size: clamp(52px, min(12.5vh, 16vw), 156px);
+  line-height: 0.9;
+  color: var(--hot);
+  transform: skewX(-10deg) rotate(-3deg);
+  transform-origin: 0 100%;
+  --otw: 0.16em;
+  animation: vb-bonk 0.7s cubic-bezier(0.2, 1.6, 0.35, 1) both;
+}
+.vb-rank { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6em; transform: skewX(-10deg); animation: vb-rise 0.4s 0.4s ease-out both; }
+.vb-rank .k { padding: 0.2em 0.55em; font-weight: 700; font-size: 0.8em; letter-spacing: 0.25em; color: var(--ink); background: var(--volt); border-radius: 0.2em; }
+.vb-rank b { font-family: var(--f-disp); font-weight: 400; font-size: 1.75em; line-height: 1.05; color: var(--volt); text-shadow: 0.06em 0.08em 0 var(--ink); }
+.vb-over-score { display: grid; grid-template-columns: auto auto; align-items: center; column-gap: 1em; animation: vb-rise 0.4s 0.5s ease-out both; }
+.vb-over-score > .k { grid-column: 1; grid-row: 1; font-weight: 700; font-size: 0.8em; letter-spacing: 0.3em; color: var(--lav); }
+.vb-over-num {
+  grid-column: 1;
+  grid-row: 2;
+  font-family: var(--f-disp);
+  font-size: clamp(40px, min(8.5vh, 12.5vw), 104px);
+  line-height: 1;
+  color: var(--paper);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transform: skewX(-10deg);
+  --otw: 0.16em;
+}
+.vb-over-num.vb-counting { color: var(--volt); }
+.vb-newbest { grid-column: 2; grid-row: 1 / span 2; position: relative; display: none; align-items: center; justify-content: center; width: 7.4em; height: 7.4em; }
+.vb-newbest.vb-on { display: flex; animation: vb-stamp 0.5s cubic-bezier(0.2, 1.6, 0.35, 1) both; }
+.vb-newbest .vb-burst { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--volt); animation: vb-spin 8s linear infinite; }
+.vb-newbest > span { width: 4.2em; font-family: var(--f-disp); font-size: 1.4em; line-height: 0.95; text-align: center; color: var(--hot); transform: rotate(-12deg); --otw: 0.14em; }
+.vb-chal-res {
+  display: none;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.4em 1em 0.4em 0.5em;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  border: 0.16em solid var(--ink);
+  border-radius: 0.35em;
+  transform: skewX(-10deg);
+  box-shadow: 0.22em 0.26em 0 var(--ink);
+  animation: vb-rise 0.4s 0.6s ease-out both;
+}
+.vb-chal-res.vb-on { display: inline-flex; }
+.vb-chal-res.vb-won { color: var(--ink); background: var(--lime); }
+.vb-chal-res.vb-lost { color: var(--paper); background: var(--hot); text-shadow: 0.06em 0.08em 0 var(--ink); }
+.vb-chal-res svg { flex: none; width: 1.8em; height: 1.8em; }
+.vb-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6em; width: 100%; }
+.vb-stat { position: relative; z-index: 0; padding: 0.5em 0.85em 0.5em; animation: vb-rise 0.35s ease-out both; animation-delay: calc(0.65s + var(--i) * 60ms); }
+.vb-stat::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgba(46, 36, 112, 0.9);
+  border: 0.15em solid var(--ink);
+  border-radius: 0.4em;
+  transform: skewX(-8deg);
+  box-shadow: 0.18em 0.2em 0 var(--ink);
+}
+.vb-stat-k { font-size: 0.68em; font-weight: 700; letter-spacing: 0.18em; color: var(--lav); }
+.vb-stat-v { font-family: var(--f-disp); font-size: 1.7em; line-height: 1.05; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--paper); }
+.vb-stat-v small { margin-left: 0.3em; font-family: var(--f-ui); font-weight: 700; font-size: 0.45em; letter-spacing: 0.12em; color: var(--surf); }
+.vb-over-btns { display: flex; flex-wrap: wrap; align-items: center; gap: 0.9em 1em; margin-top: 0.4em; animation: vb-rise 0.4s 0.8s ease-out both; }
+.vb-share { display: none; width: 100%; }
+.vb-share.vb-on { display: block; animation: vb-rise 0.25s ease-out both; }
+.vb-share .k { margin-bottom: 0.35em; font-size: 0.8em; letter-spacing: 0.1em; color: var(--volt); }
+.vb-share textarea {
+  display: block;
+  width: 100%;
+  padding: 0.6em 0.8em;
+  font-family: var(--f-ui);
+  font-weight: 600;
+  font-size: 0.95em;
+  line-height: 1.35;
+  color: var(--paper);
+  background: var(--ink);
+  border: 0.15em solid var(--surf);
+  border-radius: 0.35em;
+  resize: none;
+  outline: none;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.vb-share textarea:focus-visible { border-color: var(--volt); }
+.vb-over-right { min-width: 0; padding: 1.4em 2.2em 1.3em; animation: vb-rise 0.5s 0.7s ease-out both; }
+.vb-dmg { display: flex; flex-direction: column; gap: 0.55em; margin-bottom: 1.3em; }
+.vb-dmg-row { display: flex; align-items: center; gap: 0.65em; animation: vb-rise 0.35s ease-out both; animation-delay: calc(0.8s + var(--i) * 70ms); }
+.vb-dmg-ic { flex: none; width: 2.35em; height: 2.35em; padding: 0.2em; background: #3b2e7e; border: 0.14em solid var(--ink); border-radius: 0.35em; transform: skewX(-8deg); }
+.vb-dmg-ic svg { width: 100%; height: 100%; }
+.vb-dmg-mid { flex: 1; min-width: 0; }
+.vb-dmg-top { display: flex; justify-content: space-between; align-items: baseline; gap: 0.6em; margin-bottom: 0.22em; }
+.vb-dmg-name { font-weight: 700; font-size: 0.92em; letter-spacing: 0.04em; overflow-wrap: anywhere; }
+.vb-dmg-val { flex: none; font-size: 0.78em; font-variant-numeric: tabular-nums; color: var(--lav); }
+.vb-dmg-track { height: 0.8em; overflow: hidden; background: rgba(20, 15, 46, 0.85); border: 0.12em solid var(--ink); border-radius: 0.2em; transform: skewX(-14deg); }
+.vb-dmg-fill { height: 100%; transform-origin: 0 50%; transform: scaleX(var(--w)); background: linear-gradient(180deg, #ffb070 0 35%, var(--sun) 35%); animation: vb-grow 0.7s cubic-bezier(0.2, 1, 0.3, 1) both; animation-delay: calc(0.9s + var(--i) * 70ms); }
+.vb-dmg-row:first-child .vb-dmg-fill { background: linear-gradient(180deg, #fff3a8 0 35%, var(--volt) 35%); }
+.vb-bests-sm .vb-best { padding: 0.3em 0.55em; }
+.vb-bests-sm .vb-best-rank { font-size: 1.2em; }
+.vb-bests-sm .vb-best-score { font-size: 1.12em; }
+
+/* =====================================================================
+   KEYFRAMES
+   ===================================================================== */
+@keyframes vb-in { from { opacity: 0; } }
+@keyframes vb-out { to { opacity: 0; } }
+@keyframes vb-rise { from { opacity: 0; transform: translateY(0.7em); } }
+@keyframes vb-drop { from { opacity: 0; transform: translateY(-1.2em) scale(1.3); } }
+@keyframes vb-pop-in { from { opacity: 0; transform: translateY(1.2em) scale(0.94); } }
+@keyframes vb-slide-in { from { opacity: 0; transform: translateX(-2.5em) skewX(-10deg); } }
+@keyframes vb-tag-in { from { opacity: 0; transform: translateX(-1.5em) skewX(-30deg); } }
+@keyframes vb-nudge { to { translate: 0.18em 0; } }
+@keyframes vb-shine { 0% { transform: translateX(-130%); } 35%, 100% { transform: translateX(130%); } }
+@keyframes vb-throb { 50% { scale: 1.07; } }
+@keyframes vb-beat { 50% { scale: 1.18; } }
+@keyframes vb-heartbeat { 0%, 100% { opacity: 0.5; } 15% { opacity: 1; } 30% { opacity: 0.6; } 45% { opacity: 0.95; } }
+@keyframes vb-lines { to { rotate: 11deg; } }
+@keyframes vb-boss-in { from { opacity: 0; transform: translateY(-0.6em) scaleX(0.3); } }
+@keyframes vb-ring { 0% { opacity: 0.95; transform: scale(1); } 100% { opacity: 0; transform: scale(1.06, 1.3); } }
+@keyframes vb-flick { 0% { transform: scaleY(0.76) translateX(-0.25em); } 100% { transform: scaleY(1.1) translateX(0.25em); } }
+@keyframes vb-ram-pulse { to { scale: 1.1; } }
+@keyframes vb-shake {
+  0% { translate: 0 0; }
+  25% { translate: -0.09em 0.06em; }
+  50% { translate: 0.08em -0.06em; }
+  75% { translate: -0.05em -0.08em; }
+  100% { translate: 0.07em 0.05em; }
+}
+@keyframes vb-band { from { transform: skewY(-1.5deg) scaleX(0); } }
+@keyframes vb-slam { 0% { opacity: 0; transform: skewX(-10deg) scale(2.8); } 45% { opacity: 1; } 100% { opacity: 1; transform: skewX(-10deg) scale(1); } }
+@keyframes vb-ann-out { to { opacity: 0; transform: translateX(18vw) skewX(-20deg); } }
+@keyframes vb-toast-in { from { opacity: 0; translate: 3em 0; } }
+@keyframes vb-toast-out { to { opacity: 0; translate: 2em 0; } }
+@keyframes vb-spin { to { rotate: 360deg; } }
+@keyframes vb-deal { 0% { opacity: 0; transform: translateY(55vh) rotate(14deg) scale(0.7); } 55% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+@keyframes vb-holo { 0%, 12% { transform: translateX(-42%); } 72%, 100% { transform: translateX(42%); } }
+@keyframes vb-lt-in { 0% { opacity: 0; transform: translateX(1.4em) scaleX(1.7); } 55% { opacity: 1; transform: translateX(-0.06em) scaleX(0.92); } 100% { opacity: 1; transform: none; } }
+@keyframes vb-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-0.05em); } }
+@keyframes vb-streak { 0% { opacity: 0; transform: translateX(90%); } 20% { opacity: 0.9; } 100% { opacity: 0; transform: translateX(-80%); } }
+@keyframes vb-wiggle { 0%, 84%, 100% { rotate: 0deg; } 88% { rotate: -2deg; } 92% { rotate: 2deg; } 96% { rotate: -1deg; } }
+@keyframes vb-bonk { 0% { opacity: 0; transform: skewX(-10deg) rotate(-3deg) scale(3) translateY(-0.3em); } 50% { opacity: 1; } 100% { opacity: 1; transform: skewX(-10deg) rotate(-3deg); } }
+@keyframes vb-stamp { 0% { opacity: 0; transform: scale(2.6) rotate(-30deg); } 100% { opacity: 1; transform: none; } }
+@keyframes vb-grow { from { transform: scaleX(0); } }
+
+/* =====================================================================
+   RESPONSIVE
+   ===================================================================== */
+@media (max-width: 1100px) {
+  .vb-over-wrap { grid-template-columns: minmax(0, 1fr); max-width: 46em; }
+}
+@media (max-width: 860px) {
+  .vb-title-grid { grid-template-columns: minmax(0, 1fr); align-items: start; padding-top: 28px; }
+  .vb-title-tint { background: linear-gradient(180deg, rgba(20, 15, 46, 0.55), rgba(20, 15, 46, 0.88) 55%); }
+  .vb-menu { align-items: stretch; width: 100%; }
+  .vb-menu > .vb-btn,
+  .vb-menu > .vb-btn:nth-child(2) { margin-left: 0; }
+  .vb-menu-row { margin-left: 0; }
+  .vb-menu-row .vb-btn { flex: 1 1 10em; }
+  .vb-how { grid-template-columns: minmax(0, 1fr); }
+  .vb-footer { margin-top: 0; }
+}
+@media (max-width: 760px) {
+  .vb-cards { flex-direction: column; align-items: center; }
+  .vb-card { width: min(100%, 26em); }
+  .vb-card-body {
+    display: grid;
+    grid-template-columns: 5.4em minmax(0, 1fr);
+    grid-template-areas: "band band" "ic name" "ic lv" "desc desc";
+    align-items: center;
+    justify-items: start;
+    column-gap: 0.9em;
+    text-align: left;
+  }
+  .vb-card-band { grid-area: band; justify-self: stretch; }
+  .vb-card-ic { grid-area: ic; width: 5.4em; height: 5.4em; margin: 0.7em 0 0 0.9em; }
+  .vb-card-name { grid-area: name; align-self: end; padding: 0.4em 0.8em 0 0; font-size: 1.45em; }
+  .vb-card-lv { grid-area: lv; align-self: start; }
+  .vb-card-desc { grid-area: desc; }
+  .vb-ann-t { white-space: normal; text-align: center; font-size: 40px; }
+}
+@media (max-width: 520px) {
+  .vb-root { --mu: 14px; }
+  .vb-panel { padding: 1.3em 1.2em 1.4em; }
+  .vb-set-row { grid-template-columns: minmax(0, 1fr) 3.4em; row-gap: 0.25em; }
+  .vb-set-row > .vb-set-lab { grid-column: 1 / -1; }
+  .vb-psums { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vb-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vb-over-btns .vb-btn { flex: 1 1 100%; }
+  .vb-over-score { grid-template-columns: auto; }
+  .vb-newbest { grid-column: 1; grid-row: 3; width: 6em; height: 6em; }
+  .vb-btn-xl .vb-btn-in { font-size: 1.6em; }
+}
+
+/* Reduced motion: keep every state change visible, drop the loops and the big travel. */
+@media (prefers-reduced-motion: reduce) {
+  .vb-root *,
+  .vb-root *::before,
+  .vb-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.08s !important;
+  }
+  .vb-lowhp .vb-vignette { opacity: 0.7; }
+  .vb-speedlines { display: none !important; }
+  .vb-ram .vb-mom-panel::after { opacity: 0.8; transform: scale(1.03, 1.12); }
+}
