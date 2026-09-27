@@ -247,7 +247,7 @@ class Game {
       dailyNumber: this.challenge?.daily ?? this.daily.n, dateLabel: this.daily.pretty,
       bests: this.bests.slice(0, 5), challenge: this.challenge ? { score: this.challenge.score, daily: this.challenge.daily, name: null } : null,
       settings: this.settings,
-      characters: CHAR_ORDER.map(id => { const C = CHARACTERS[id]; return { id, name: C.name, title: C.title, passive: C.passive, start: WEAPONS[C.start[0]]?.name || C.start[0], unlocked: P.hasChar(id), req: P.charReq(id) }; }),
+      characters: CHAR_ORDER.map(id => { const C = CHARACTERS[id]; return { id, name: C.name, title: C.title, passive: C.passive, start: WEAPONS[C.start[0]]?.name || C.start[0], unlocked: P.hasChar(id), req: P.charReq(id), secret: id === 'goldie' }; }),
       selectedChar: P.selectedChar,
       islands: ISLANDS.map(I => ({ n: I.n, name: I.name, biome: I.id, unlocked: I.n <= un, cleared: cleared >= I.n, best: P.islandBest[I.n] || null })),
       quests: { done: P.done.size, total: QUESTS.length },
