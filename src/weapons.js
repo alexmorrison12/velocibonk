@@ -14,6 +14,8 @@ export const WEAPONS = {
   aura:    { name: 'Stink Aura',    desc: 'A damaging cloud that slows enemies.', max: 7 },
   quake:   { name: 'Quake Boots',   desc: 'Landings unleash shockwaves. Higher falls hit harder.', max: 7 },
   lance:   { name: 'Sonic Lance',   desc: 'Piercing beam fired where you run. Scales with speed.', max: 7 },
+  frost:   { name: 'Frost Nova',    desc: 'An icy blast that freezes the horde solid. Frozen foes take +40% damage.', max: 7 },
+  blackhole: { name: 'Black Hole',  desc: 'Opens a vortex that drags the horde in and crushes it.', max: 7 },
 };
 
 // per-level scaling (L = 1..max)
@@ -30,12 +32,17 @@ export function weaponStats(id, L, s) {
     case 'aura': return { dmg: 6 * (1 + 0.28 * lv), r: (3.0 + 0.35 * lv) * area };
     case 'quake': return { dmg: 34 * (1 + 0.3 * lv), r: (4.8 + 0.6 * lv) * area };
     case 'lance': return { dmg: 10 * (1 + 0.25 * lv), cd: 1.25 * Math.pow(0.93, lv), len: 22 + 2 * L, w: 1.4 * area, n: 1 + ms };
+    case 'frost': return { dmg: 22 * (1 + 0.28 * lv), cd: 3.2 * Math.pow(0.93, lv), r: (5.5 + 0.45 * lv) * area, freeze: 1.3 + 0.1 * lv };
+    case 'blackhole': return { dmg: 11 * (1 + 0.3 * lv), cd: 6.5 * Math.pow(0.92, lv), r: (6.5 + 0.45 * lv) * area, dur: 2.6 + 0.2 * lv, n: 1 + Math.floor(lv / 3) + ms };
   }
 }
 
 export function weaponUpgradeLines(id, L) {
   // text shown on the card when going from L to L+1
+  if (L >= 7) return ['+30% damage', 'beyond-the-cap power'];
   const lines = {
+    frost: ['+28% damage', 'bigger blast', 'longer freeze'],
+    blackhole: (L + 1) % 3 === 0 ? ['+1 black hole', '+30% damage'] : ['+30% damage', 'bigger vortex', 'lasts longer'],
     bat: ['+32% damage', '+0.35 m reach', '-10% cooldown'],
     pebble: L % 2 === 1 ? ['+1 pebble', '+26% damage'] : L === 2 || L === 5 ? ['+1 pierce', '+26% damage'] : ['+26% damage', '-8% cooldown'],
     saw: ['+1 saw', '+26% damage', 'faster spin'],
@@ -52,6 +59,7 @@ export function weaponUpgradeLines(id, L) {
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3();
 const hits = new Int32Array(4096);
+const hits2 = new Int32Array(256);
 
 export class Arsenal {
   constructor(scene, game) {
@@ -66,7 +74,7 @@ export class Arsenal {
     this.banMesh = mk('banana', 60, '#6a5200', 0.4);
     this.sawMesh = mk('saw', 24, '#300', 0.2);
     this.metMesh = mk('meteor', 40, '#FF5A00', 1.2);
-    this.peb = []; this.ban = []; this.met = []; this.fires = [];
+    this.peb = []; this.ban = []; this.met = []; this.fires = []; this.holes = [];
     this.bangId = 1;
     // stink aura disc
     const c = document.createElement('canvas'); c.width = c.height = 128;
@@ -83,10 +91,16 @@ export class Arsenal {
   }
 
   reset() {
-    this.list.length = 0; this.peb.length = 0; this.ban.length = 0; this.met.length = 0; this.fires.length = 0;
+    this.list.length = 0; this.peb.length = 0; this.ban.length = 0; this.met.length = 0; this.fires.length = 0; this.holes.length = 0;
     this.pebMesh.count = this.banMesh.count = this.sawMesh.count = this.metMesh.count = 0;
     this.auraMesh.visible = false; this.distAcc = 0; this.auraT = 0; this.fireT = 0; this.sawAngle = 0;
     this.dmgBy = {};
+  }
+
+  // wipe in-flight projectiles/fields but keep the build (island travel)
+  clearTransient() {
+    this.peb.length = 0; this.ban.length = 0; this.met.length = 0; this.fires.length = 0; this.holes.length = 0;
+    this.pebMesh.count = this.banMesh.count = this.metMesh.count = 0;
   }
 
   get(id) { return this.list.find(w => w.id === id); }
@@ -166,6 +180,7 @@ export class Arsenal {
               for (let k = 0; k < n; k++) { const j = hits[k]; if (seen.has(j)) continue; const ddx = E.x[j] - _v.x, ddz = E.z[j] - _v.z, dd = ddx * ddx + ddz * ddz; if (dd < bd) { bd = dd; best = j; } }
               cur = best;
             }
+            g.progress?.max('zapChain', seen.size);
             fired++;
           }
           if (fired) g.audio.play('zap', { volume: 0.45 });
@@ -221,6 +236,37 @@ export class Arsenal {
           g.audio.play('lance', { volume: 0.45 });
           break;
         }
+        case 'frost': {
+          w.t = st.cd;
+          const y = P.y + 0.3;
+          if (g.fx.frostRing) g.fx.frostRing(_v.set(P.x, y, P.z), st.r, 0.5); else g.fx.ring(_v.set(P.x, y, P.z), st.r, '#9FEFFF', 0.45, 0.8);
+          g.audio.play('frostnova', { volume: 0.55 });
+          const n = E.query(P.x, P.z, st.r, hits, 900);
+          let frozen = 0;
+          for (let k = 0; k < n; k++) {
+            const i = hits[k];
+            const dx = E.x[i] - P.x, dz = E.z[i] - P.z, d = Math.hypot(dx, dz) + 1e-4;
+            this.hit(i, w, st.dmg, dx / d, dz / d, 2);
+            if (E.state[i] === 1 && !E.bossAt(i)) { E.frz[i] = st.freeze * (E.elite[i] ? 0.5 : 1); frozen++; }
+          }
+          if (frozen > 20) g.audio.play('freeze', { volume: 0.4 });
+          break;
+        }
+        case 'blackhole': {
+          w.t = st.cd;
+          for (let q = 0; q < st.n; q++) {
+            const n = E.query(P.x, P.z, 24, hits, 900);
+            if (!n) { w.t = 0.5; break; }
+            // aim at the densest of a few random candidates
+            let best = hits[(Math.random() * n) | 0], bestN = -1;
+            for (let c = 0; c < 6; c++) { const i = hits[(Math.random() * n) | 0]; const m = E.query(E.x[i], E.z[i], 5, hits2, 200); if (m > bestN) { bestN = m; best = i; } }
+            const hx = E.x[best], hz = E.z[best], hy = g.world.heightAt(hx, hz) + 1.4;
+            this.holes.push({ x: hx, z: hz, y: hy, t: st.dur, r: st.r, dmg: st.dmg, w, tick: 0 });
+            if (g.fx.blackHole) g.fx.blackHole(_v.set(hx, hy, hz), st.r, st.dur); else g.fx.ring(_v.set(hx, hy, hz), st.r, '#B45CFF', st.dur, 1);
+            g.audio.play('blackhole', { volume: 0.55 });
+          }
+          break;
+        }
         case 'saw': case 'aura': case 'hotfeet': case 'quake': break;
       }
     }
@@ -230,6 +276,32 @@ export class Arsenal {
     this._updatePebbles(dt, t);
     this._updateBananas(dt, t);
     this._updateMeteors(dt, t);
+    this._updateHoles(dt);
+  }
+
+  _updateHoles(dt) {
+    const g = this.game, E = g.enemies;
+    for (let k = this.holes.length - 1; k >= 0; k--) {
+      const h = this.holes[k];
+      h.t -= dt; h.tick -= dt;
+      const n = E.query(h.x, h.z, h.r, hits, 900);
+      const tick = h.tick <= 0;
+      if (tick) h.tick = 0.25;
+      for (let q = 0; q < n; q++) {
+        const i = hits[q];
+        const dx = h.x - E.x[i], dz = h.z - E.z[i], d = Math.hypot(dx, dz) + 1e-4;
+        if (!E.bossAt(i)) { const pull = (1 - d / (h.r + 1)) * 26 * dt + 2 * dt; E.kx[i] += dx / d * pull * 8; E.kz[i] += dz / d * pull * 8; }
+        if (tick) this.hit(i, h.w, h.dmg * (d < h.r * 0.35 ? 2 : 1), -dx / d, -dz / d, 0);
+      }
+      if (h.t <= 0) {
+        // collapse: a final crush in the core
+        const m = E.query(h.x, h.z, h.r * 0.6, hits, 900);
+        for (let q = 0; q < m; q++) this.hit(hits[q], h.w, h.dmg * 4, 0, 0, 10);
+        g.fx.ring(_v.set(h.x, h.y, h.z), h.r * 1.2, '#E08CFF', 0.4, 1.2);
+        g.shake(0.2);
+        this.holes.splice(k, 1);
+      }
+    }
   }
 
   _updateSaws(dt, t) {
@@ -358,6 +430,7 @@ export class Arsenal {
         const i = hits[q]; if (E.lastBang[i] === b.id) continue;
         E.lastBang[i] = b.id;
         this.hit(i, b.w, b.dmg, b.dx, b.dz, 6);
+        b.hits = (b.hits || 0) + 1; g.progress?.max('bananaHits', b.hits);
       }
       if (c < 60) {
         const o = c * 16, cs = Math.cos(b.spin), sn = Math.sin(b.spin);

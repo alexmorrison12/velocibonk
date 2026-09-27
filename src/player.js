@@ -20,16 +20,26 @@ function rotateToward(vx, vz, tx, tz, maxAngle) {
 }
 
 export class Player {
-  constructor(scene, world) {
-    this.world = world;
-    const built = buildPlayer();
-    this.model = built.root; this.parts = built.parts;
-    this.model.traverse(o => { if (o.isMesh) { o.castShadow = true; } });
-    scene.add(this.model);
+  constructor(scene, world, variant = 'rex') {
+    this.world = world; this.scene = scene;
+    this.friction = 1; this.slowT = 0; this.swampK = 1;
+    this.setVariant(variant);
     this.pos = new THREE.Vector3();
     this.vel = new THREE.Vector3();
     this.events = {};
     this.reset(0, 0);
+  }
+
+  // swap the character model (REX, ZAPPY, NANA, ...) keeping position and state
+  setVariant(variant) {
+    if (this.variant === variant && this.model) return;
+    let built;
+    try { built = buildPlayer(variant); } catch { built = buildPlayer(); }
+    const old = this.model;
+    this.model = built.root; this.parts = built.parts; this.variant = variant;
+    this.model.traverse(o => { if (o.isMesh) { o.castShadow = true; } });
+    if (old) { this.model.position.copy(old.position); this.model.rotation.copy(old.rotation); this.model.visible = old.visible; this.scene.remove(old); }
+    this.scene.add(this.model);
   }
 
   reset(x, z) {
@@ -50,7 +60,9 @@ export class Player {
   update(dt, input, yaw, stats) {
     const w = this.world;
     const p = this.pos, v = this.vel;
-    const runMax = BASE_RUN * stats.moveSpeed;
+    this.slowT -= dt;
+    const runMax = BASE_RUN * stats.moveSpeed * (this.slowT > 0 ? 0.6 : 1) * this.swampK;
+    const fric = this.friction;
     // wish direction relative to camera yaw
     let ix = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     let iz = (input.fwd ? 1 : 0) - (input.back ? 1 : 0);
@@ -88,7 +100,7 @@ export class Player {
         const g = GRAV * 1.35;
         v.x += g * _n.y * _n.x * dt; v.z += g * _n.y * _n.z * dt;
         hs = Math.hypot(v.x, v.z);
-        const fr = (2.2 + Math.max(0, hs - 45) * 0.6) * dt; // low friction, soft cap at silly speeds
+        const fr = (2.2 * fric + Math.max(0, hs - 45) * 0.6) * dt; // low friction (ice: lower), soft cap at silly speeds
         if (hs > fr) { v.x -= v.x / hs * fr; v.z -= v.z / hs * fr; } else { v.x = v.z = 0; }
         if (hasInput) { const r = rotateToward(v.x, v.z, wx, wz, 2.4 * dt); v.x = r[0]; v.z = r[1]; }
         if (Math.hypot(v.x, v.z) < 1.2 && !hasInput) this.sliding = false;
@@ -97,13 +109,13 @@ export class Player {
         if (hs <= runMax + 0.01) {
           // normal running: accelerate toward the wish velocity
           const tx = wx * runMax, tz = wz * runMax;
-          const accel = hasInput ? 75 : 45;
+          const accel = (hasInput ? 75 : 45) * (0.25 + 0.75 * fric);
           const dx = tx - v.x, dz = tz - v.z, dl = Math.hypot(dx, dz), step = accel * dt;
           if (dl <= step) { v.x = tx; v.z = tz; } else { v.x += dx / dl * step; v.z += dz / dl * step; }
         } else {
           // overspeed: keep momentum but steer, and bleed speed unless you bhop/slide
           if (hasInput) { const r = rotateToward(v.x, v.z, wx, wz, 5.5 * dt); v.x = r[0]; v.z = r[1]; }
-          const decay = (hasInput ? 7 : 22) * dt;
+          const decay = (hasInput ? 7 : 22) * dt * fric;
           const ns = Math.max(runMax, hs - decay);
           v.x *= ns / hs; v.z *= ns / hs;
         }

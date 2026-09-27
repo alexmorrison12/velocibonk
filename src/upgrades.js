@@ -1,4 +1,6 @@
-// Level-up cards: weapons + tomes with rarity rolls (luck-weighted), deterministic per run seed.
+// Level-up cards: weapons + tomes with rarity rolls (luck-weighted), gated by unlocks and by the
+// per-island level caps. Raw STAT boosts never cap: the Moai shrine offers them, and they are the
+// fallback whenever a build is fully maxed, so a shrine or chest is never wasted.
 import { WEAPONS, weaponUpgradeLines } from './weapons.js';
 
 export const RARITIES = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
@@ -22,8 +24,24 @@ export const TOMES = {
   momentum:  { name: 'Momentum Tome',    base: 0.2, line: v => `+${pct(v)} speed→damage conversion` },
 };
 
+// raw stat boosts (Moai shrine + maxed-build fallback). `icon` reuses a tome icon.
+export const STATS = {
+  power:  { name: 'Raw Power', icon: 'might', base: 0.08, line: v => `+${pct(v)} damage`, apply: (s, v) => { s.might += v; } },
+  skin:   { name: 'Thick Skin', icon: 'vitality', base: 16, line: v => `+${Math.round(v)} max HP`, apply: (s, v) => { s.maxHp += v; } },
+  feet:   { name: 'Quick Feet', icon: 'zoomies', base: 0.05, line: v => `+${pct(v)} move speed`, apply: (s, v) => { s.moveSpeed += v; } },
+  rush:   { name: 'Adrenaline', icon: 'haste', base: 0.06, line: v => `+${pct(v)} attack speed`, apply: (s, v) => { s.haste += v; } },
+  big:    { name: 'Big Energy', icon: 'size', base: 0.07, line: v => `+${pct(v)} area`, apply: (s, v) => { s.area += v; } },
+  eye:    { name: 'Sharp Eye', icon: 'crit', base: 0.04, line: v => `+${pct(v)} crit chance`, apply: (s, v) => { s.crit = Math.min(1, s.crit + v); } },
+  snack:  { name: 'Snack Break', icon: 'regen', base: 0.35, line: v => `+${v.toFixed(2)} HP / sec`, apply: (s, v) => { s.regen += v; } },
+  claws:  { name: 'Sticky Claws', icon: 'magnet', base: 0.2, line: v => `+${pct(v)} pickup range`, apply: (s, v) => { s.magnet += v; } },
+  brain:  { name: 'Big Brain', icon: 'wisdom', base: 0.07, line: v => `+${pct(v)} XP gain`, apply: (s, v) => { s.wisdom += v; } },
+  slip:   { name: 'Slipstream', icon: 'momentum', base: 0.08, line: v => `+${pct(v)} speed→damage`, apply: (s, v) => { s.momentum += v; } },
+  scales: { name: 'Tough Scales', icon: 'armor', base: 0.03, line: v => `-${pct(v)} damage taken`, apply: (s, v) => { s.armor = Math.min(0.7, s.armor + v); } },
+  clover: { name: 'Four Leaves', icon: 'luck', base: 0.06, line: v => `+${pct(v)} luck`, apply: (s, v) => { s.luck += v; } },
+};
+
 export function freshStats() {
-  return { might: 1, haste: 1, multishot: 0, area: 1, moveSpeed: 1, magnet: 1, maxHp: 100, regen: 0, crit: 0.05, luck: 0, wisdom: 1, extraJumps: 1, jumpMult: 1, armor: 0, momentum: 1 };
+  return { might: 1, haste: 1, multishot: 0, area: 1, moveSpeed: 1, magnet: 1, maxHp: 100, regen: 0, crit: 0.05, luck: 0, wisdom: 1, extraJumps: 1, jumpMult: 1, armor: 0, momentum: 1, gold: 1 };
 }
 
 export function applyTome(stats, id, v) {
@@ -45,6 +63,8 @@ export function applyTome(stats, id, v) {
   }
 }
 
+export function applyStat(stats, key, v) { STATS[key]?.apply(stats, v); }
+
 function tomeValue(id, rarity) {
   const t = TOMES[id];
   if (t.int) return rarity === 'legendary' ? 2 : 1;
@@ -61,19 +81,34 @@ export function rollRarity(rand, luck, minIdx = 0) {
   return 'common';
 }
 
-// Build 3 upgrade choices. ctx = { arsenal, tomes: Map(id->level), stats, rand, source: 'level'|'chest'|'shrine' }
+export function statChoices(rand, luck, count = 3, minIdx = 1) {
+  const keys = Object.keys(STATS);
+  const out = [];
+  while (out.length < count && keys.length) {
+    const k = keys.splice((rand() * keys.length) | 0, 1)[0];
+    const S = STATS[k], rarity = rollRarity(rand, luck, minIdx), value = S.base * RMULT[rarity];
+    out.push({ kind: 'stat', id: S.icon, stat: k, name: S.name, rarity, levelText: 'STAT', desc: [S.line(value), 'Never caps'], value });
+  }
+  return out;
+}
+
+// Build upgrade choices.
+// ctx = { arsenal, tomes: Map, stats, rand, source: 'level'|'chest'|'shrine'|'moai'|'trial', wcap, tcap, unlocked: { weapon(id), tome(id) }, slots: { weapons, tomes } }
 export function rollChoices(ctx, count = 3) {
   const { arsenal, tomes, stats, rand, source } = ctx;
+  const wcap = ctx.wcap || 7, tcap = ctx.tcap || 5;
+  const canW = ctx.unlocked?.weapon || (() => true), canT = ctx.unlocked?.tome || (() => true);
+  const minIdx = source === 'trial' ? 3 : source === 'chest' ? 2 : source === 'shrine' || source === 'moai' ? 1 : 0;
+  if (source === 'moai') return statChoices(rand, stats.luck, count, minIdx);
   const cands = [];
   if (source !== 'shrine') {
-    for (const w of arsenal.list) if (w.level < WEAPONS[w.id].max) cands.push({ kind: 'weapon', id: w.id, weight: 1.35 });
-    if (arsenal.list.length < 5) for (const id of Object.keys(WEAPONS)) if (!arsenal.get(id)) cands.push({ kind: 'weapon', id, weight: 0.95, fresh: true });
+    for (const w of arsenal.list) if (w.level < wcap) cands.push({ kind: 'weapon', id: w.id, weight: 1.35 });
+    if (arsenal.list.length < (ctx.slots?.weapons || 5)) for (const id of Object.keys(WEAPONS)) if (!arsenal.get(id) && canW(id)) cands.push({ kind: 'weapon', id, weight: 0.95, fresh: true });
   }
-  for (const [id, lv] of tomes) if (lv < 5) cands.push({ kind: 'tome', id, weight: 1.15 });
-  if (tomes.size < 6) for (const id of Object.keys(TOMES)) if (!tomes.has(id)) cands.push({ kind: 'tome', id, weight: 0.8, fresh: true });
+  for (const [id, lv] of tomes) if (lv < tcap) cands.push({ kind: 'tome', id, weight: 1.15 });
+  if (tomes.size < (ctx.slots?.tomes || 6)) for (const id of Object.keys(TOMES)) if (!tomes.has(id) && canT(id)) cands.push({ kind: 'tome', id, weight: 0.8, fresh: true });
 
   const out = [];
-  const minIdx = source === 'chest' ? 2 : source === 'shrine' ? 1 : 0;
   while (out.length < count && cands.length) {
     const tot = cands.reduce((a, c) => a + c.weight, 0);
     let r = rand() * tot, pick = 0;
@@ -82,11 +117,8 @@ export function rollChoices(ctx, count = 3) {
     const rarity = rollRarity(rand, stats.luck, minIdx);
     out.push(describe(c, rarity, arsenal, tomes));
   }
-  if (!out.length) {
-    out.push({ kind: 'bonus', id: 'gold', name: 'Bag of Gold', rarity: 'rare', levelText: 'BONUS', desc: ['+60 gold'] });
-    out.push({ kind: 'bonus', id: 'heal', name: 'Big Snack', rarity: 'uncommon', levelText: 'BONUS', desc: ['Fully heal'] });
-    out.push({ kind: 'bonus', id: 'score', name: 'Style Points', rarity: 'epic', levelText: 'BONUS', desc: ['+25,000 score'] });
-  }
+  // fully maxed (or nearly): top up with raw stat boosts so every pick still matters
+  if (out.length < count) out.push(...statChoices(rand, stats.luck, count - out.length, Math.max(1, minIdx)));
   return out;
 }
 

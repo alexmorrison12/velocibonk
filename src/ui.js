@@ -20,6 +20,33 @@ const FONT_HREF =
   'https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Lilita+One&display=swap';
 
 const RARITY = { common: 'COMMON', uncommon: 'UNCOMMON', rare: 'RARE', epic: 'EPIC', legendary: 'LEGENDARY' };
+// THE ARCHIPELAGO: biome palette (c = signature colour, d = deep shade) in island order
+const BIOME_ORDER = ['tropical', 'frost', 'desert', 'grave', 'volcano'];
+const BIOMES = {
+  tropical: { c: '#66BD48', d: '#15452B', name: 'PALM PARADISE' },
+  frost: { c: '#9FD4FF', d: '#1B2A6B', name: 'FROSTBITE PEAKS' },
+  desert: { c: '#F4A04A', d: '#5A2410', name: 'SUNSCORCH DUNES' },
+  grave: { c: '#8A6CFF', d: '#1A1438', name: 'GLOOMHOLLOW' },
+  volcano: { c: '#FF5A1F', d: '#2D0B06', name: 'MAGMA CORE' },
+};
+const biomeOf = (b, n) => (BIOMES[b] ? b : BIOME_ORDER[(n | 0) - 1] || 'tropical');
+// minimap palettes: sea gradient + island disc stops
+const MM_BIOME = {
+  tropical: { sea: ['#1b6f96', '#0b3656'], land: [[0, '#2f8a45'], [0.72, '#4fae54'], [0.86, '#8fc862'], [0.91, '#f1d38e'], [0.955, 'rgba(241,211,142,.55)'], [1, 'rgba(241,211,142,0)']] },
+  frost: { sea: ['#3f7fc0', '#15335e'], land: [[0, '#8fb0d8'], [0.6, '#aec6e6'], [0.84, '#cddcf0'], [0.91, '#eef5ff'], [0.955, 'rgba(238,245,255,.6)'], [1, 'rgba(238,245,255,0)']] },
+  desert: { sea: ['#1e8f9a', '#0b4a5e'], land: [[0, '#cf7a42'], [0.5, '#dda05a'], [0.8, '#eab266'], [0.91, '#f7d9a0'], [0.955, 'rgba(247,217,160,.55)'], [1, 'rgba(247,217,160,0)']] },
+  grave: { sea: ['#233a4f', '#0c1522'], land: [[0, '#2b2f4c'], [0.6, '#34505a'], [0.84, '#3e6a64'], [0.91, '#6a5fae'], [0.955, 'rgba(138,108,255,.45)'], [1, 'rgba(138,108,255,0)']] },
+  volcano: { sea: ['#4a1a10', '#1a0705'], land: [[0, '#ffb13a'], [0.1, '#ff5a1f'], [0.2, '#5a2a20'], [0.78, '#2e1a18'], [0.88, '#ff5a1f'], [0.94, 'rgba(255,90,31,.5)'], [1, 'rgba(255,90,31,0)']] },
+};
+const SHRINE_MM = { blessing: '#1AE3FF', moai: '#B7B0C8', totem: '#FF3D8B', greed: '#FFC21A', pylon: '#B45CFF' };
+// display-name fallbacks for starting weapons given as ids
+const WEAPON_NAMES = {
+  bat: 'The Bonker', pebble: 'Magic Pebbles', saw: 'Saw Buddies', zap: 'Zeus Juice', hotfeet: 'Hot Feet', banana: 'Bananarang', meteor: 'Sky Bonk',
+  aura: 'Stink Aura', quake: 'Quake Boots', lance: 'Sonic Lance', frost: 'Frost Nova', blackhole: 'Black Hole',
+};
+const KIND_LABEL = { weapon: 'WEAPON', tome: 'TOME', character: 'RAPTOR', island: 'ISLAND', shrine: 'SHRINE', perk: 'PERK', stat: 'STAT', bonus: 'BONUS' };
+const CAT_ICON = { ISLANDS: 'portal', MOVEMENT: 'zoomies', COMBAT: 'challenge', EXPLORATION: 'quest' };
+const CAT_ORDER = ['ISLANDS', 'MOVEMENT', 'COMBAT', 'EXPLORATION'];
 const DEFAULT_SETTINGS = { master: 0.8, music: 0.6, sfx: 0.8, sensitivity: 1, invertY: false, quality: 'high', showFps: false };
 const SEGS = 24; // momentum meter segments
 const MM_RANGE = 90; // metres shown from player to minimap edge
@@ -68,6 +95,15 @@ function mmss(t) {
   const s = t % 60;
   return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
 }
+const mss = (t) => Math.floor(t / 60) + ':' + (t % 60 < 10 ? '0' : '') + (t % 60); // countdown "7:59"
+function compact(n) {
+  n = Math.round(+n || 0);
+  const a = Math.abs(n);
+  if (a >= 1e6) return (n / 1e6).toFixed(a >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M';
+  if (a >= 1e4) return Math.round(n / 1e3) + 'K';
+  return commas(n);
+}
+const isTyping = (a) => !!a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable);
 const tierOf = (m) => (m >= 4 ? 4 : m >= 3 ? 3 : m >= 2 ? 2 : m >= 1.5 ? 1 : 0);
 function fmtDate(d) {
   if (d == null || d === '') return '';
@@ -109,6 +145,38 @@ const FLAME_IN = 'M32 26 C36 32 42 36 41 45 C40 51 36 55 32 55 C28 55 23 51 23 4
 const BAT_H =
   `<path d="M13 29 H27 C33 29 38 25.5 46 25.5 C54 25.5 58.5 28 58.5 32 C58.5 36 54 38.5 46 38.5 C38 38.5 33 35 27 35 H13 Z" fill="${WOOD}"/>` +
   `<rect x="12" y="28.5" width="11" height="7" rx="1.5" fill="${HOT}"/><circle cx="9" cy="32" r="4.5" fill="${WOOD}"/>`;
+
+function ngon(cx, cy, r, n, rot = -Math.PI / 2) {
+  let d = '';
+  for (let i = 0; i < n; i++) d += (i ? 'L' : 'M') + polar(cx, cy, r, rot + (i * TAU) / n);
+  return d + 'Z';
+}
+function frostNova() {
+  let shards = '';
+  for (let i = 0; i < 12; i++) {
+    const a = (i * Math.PI) / 6 + Math.PI / 12;
+    shards += 'M' + polar(32, 32, 23.5, a - 0.14) + 'L' + polar(32, 32, 30.5, a) + 'L' + polar(32, 32, 23.5, a + 0.14) + 'Z';
+  }
+  let d = '';
+  for (let i = 0; i < 6; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 3;
+    d += 'M32 32 L' + polar(32, 32, 20.5, a) + 'M' + polar(32, 32, 19, a - 0.45) + 'L' + polar(32, 32, 12.2, a) + 'L' + polar(32, 32, 19, a + 0.45);
+  }
+  return `<path d="${shards}" fill="${SURF}" stroke-width="2.5"/>${line2(d, '#E6FCFF', 3.5)}<path d="${ngon(32, 32, 6.5, 6)}" fill="${SURF}" stroke-width="3"/>`;
+}
+// cute raptor head in profile (facing right); `under` draws behind the head, `over` on top (hats, shades)
+const RHEAD = 'M14 64 C13 56 13 49 15 44 C12 34 16 22 27 18 C37 14 48 17 54 24 C58 28 61 32 60 37 C59 44 52 49 42 50 C37 51 34 55 33 64 Z';
+function raptor(body, dark, belly, o = {}) {
+  return svg(
+    (o.under || '') +
+      `<path d="${RHEAD}" fill="${body}"/><path d="M33 64 C34 56 37 52.5 42 50.5 C41 55 40.5 59 41.5 64 Z" fill="${belly}" stroke="none"/>` +
+      `<path d="M17 32 L23 35 M15 40 L21 41.5 M19.5 25 L24.5 28.5" stroke="${dark}" stroke-width="3.5"/><path d="${RHEAD}"/>` +
+      `<path d="M38 43 C45 44.5 52 43 57.5 39.5" stroke-width="3"/><path d="M43.5 44 L45 46.8 L46.5 44.2 Z M49.5 43.3 L50.9 45.9 L52.2 42.8 Z" fill="#fff" stroke-width="1.8"/>` +
+      `<circle cx="55.5" cy="30" r="1.7" fill="${INK}" stroke="none"/><ellipse cx="47.5" cy="38" rx="3.2" ry="2" fill="#FF7FB2" opacity=".8" stroke="none"/>` +
+      (o.noEye ? '' : `<ellipse cx="39" cy="31" rx="6" ry="7" fill="#fff" stroke-width="3"/><circle cx="40.8" cy="31.8" r="3.5" fill="${INK}" stroke="none"/><circle cx="42.2" cy="29.9" r="1.3" fill="#fff" stroke="none"/>`) +
+      (o.over || '')
+  );
+}
 
 const BASE_ICONS = {
   // weapons
@@ -227,13 +295,176 @@ const BASE_ICONS = {
       `<path d="${starPath(38, 32, 13, 7, 7, 0.3)}" fill="${HOT}" stroke-width="3"/>`
   ),
   challenge: svg(`<g transform="rotate(-45 32 32)">${BAT_H}</g><g transform="rotate(-135 32 32)">${BAT_H}</g>`),
+
+  /* ---------------- THE ARCHIPELAGO ---------------- */
+  // weapons
+  frost: svg(frostNova()),
+  blackhole: svg(
+    `<path d="M50 7 L52 3 M56 12 L60 10 M8 52 L4 55" stroke="${SURF}" stroke-width="3"/>` +
+      `<ellipse cx="32" cy="34" rx="29" ry="11.5" transform="rotate(-16 32 34)" fill="${PURPLE}"/>` +
+      `<ellipse cx="32" cy="34" rx="20" ry="6.2" transform="rotate(-16 32 34)" fill="${HOT}" stroke="none"/>` +
+      `<circle cx="32" cy="31" r="14.5" fill="#0B0820"/><circle cx="32" cy="31" r="10" stroke="#3A2A7A" stroke-width="2.5"/>` +
+      line2('M4.1 42 A29 11.5 -16 0 0 59.9 26', SUN, 4) +
+      `<path d="M13 41.5 C24 44.5 40 41 51 32" stroke="${VOLT}" stroke-width="2.2"/><circle cx="25" cy="25" r="2" fill="#fff" stroke="none"/>`
+  ),
+  // shrines
+  blessing: svg(
+    `${line2('M32 1.5 V7 M6 14 L11 18 M58 14 L53 18', VOLT, 3.2)}<path d="M20 11 H44 L55 25 L32 58 L9 25 Z" fill="${SURF}"/>` +
+      `<path d="M20 11 L26 25 L32 11 Z" fill="#BFF8FF" stroke="none"/><path d="M9 25 H55 M20 11 L26 25 L32 58 L38 25 L44 11 M26 25 L32 11 L38 25" stroke-width="3"/>` +
+      `<path d="M14 26 L25 44" stroke="#fff" stroke-width="3"/>`
+  ),
+  moai: svg(
+    `<path d="M14 40 C9.5 40 9.5 25 14 25 Z M50 40 C54.5 40 54.5 25 50 25 Z" fill="#9A93B0"/>` +
+      `<path d="M13 61 L15.5 22 C15.5 11 22.5 6 32 6 C41.5 6 48.5 11 48.5 22 L51 61 Z" fill="#AFA8C4"/>` +
+      `<path d="M41 12 C45 15 46.5 19 46.5 24 L48.6 58 H41 Z" fill="#8F88A8" stroke="none"/><path d="M13 61 L15.5 22 C15.5 11 22.5 6 32 6 C41.5 6 48.5 11 48.5 22 L51 61 Z"/>` +
+      `<rect x="20" y="1.5" width="24" height="8" rx="3.5" fill="#D8643E"/>` +
+      `<path d="M17 25.5 C24 20.5 40 20.5 47 25.5" stroke-width="5"/><path d="M19.5 27.5 H29 L28 32.5 H20.5 Z M35 27.5 H44.5 L43.5 32.5 H36 Z" fill="${INK}" stroke-width="2"/>` +
+      `<path d="M30 27 L27 42 C29.5 44.5 34.5 44.5 37 42 L34 27" fill="#8F88A8" stroke-width="3"/><path d="M24 50 C28 47.5 36 47.5 40 50 M26.5 53.5 H37.5" stroke-width="3"/>`
+  ),
+  totem: svg(
+    `<path d="M24 16 L2 9 L7 18 L2 24.5 L22 26 Z M40 16 L62 9 L57 18 L62 24.5 L42 26 Z" fill="${SUN}"/>` +
+      `<rect x="19" y="7" width="26" height="54" rx="4" fill="${WOOD}"/><path d="M19 12.5 H45 M19 39 H45" stroke-width="3.5"/>` +
+      `<path d="M23 16.5 L30 19.5 M41 16.5 L34 19.5" stroke-width="3.5"/><circle cx="27" cy="23.5" r="2.6" fill="${INK}" stroke="none"/><circle cx="37" cy="23.5" r="2.6" fill="${INK}" stroke="none"/>` +
+      `<rect x="24.5" y="28.5" width="15" height="6.5" rx="1" fill="${HOT}" stroke-width="3"/><path d="M29.5 28.5 V35 M34.5 28.5 V35" stroke-width="2"/>` +
+      `<circle cx="27" cy="46" r="4" fill="${PAPER}" stroke-width="3"/><circle cx="37" cy="46" r="4" fill="${PAPER}" stroke-width="3"/><circle cx="27.8" cy="46.4" r="1.6" fill="${INK}" stroke="none"/><circle cx="37.8" cy="46.4" r="1.6" fill="${INK}" stroke="none"/>` +
+      `<path d="M25 54 C29 57 35 57 39 54" stroke-width="3.5"/>`
+  ),
+  greed: svg(
+    `<ellipse cx="13" cy="56" rx="9" ry="4.5" fill="${VOLT}"/><ellipse cx="51" cy="56" rx="9" ry="4.5" fill="${VOLT}"/>` +
+      `<path d="M16 59 C15 45 17 31 22 23 C25 17 28 14 32 14 C36 14 39 17 42 23 C47 31 49 45 48 59 Z" fill="#FFC21A"/>` +
+      `<path d="M22 21 L17.5 6 L26.5 13.5 L32 2.5 L37.5 13.5 L46.5 6 L42 21 C36 18.5 28 18.5 22 21 Z" fill="${VOLT}"/>` +
+      `<circle cx="26" cy="32" r="3.8" fill="${HOT}" stroke-width="2.5"/><circle cx="38" cy="32" r="3.8" fill="${HOT}" stroke-width="2.5"/>` +
+      `<path d="M22 41 C27 48 37 48 42 41 Z" fill="${INK}" stroke-width="3"/><path d="M26 42.8 H38" stroke="#fff" stroke-width="2"/>` +
+      `<path d="M20.5 52 C19.5 44 20.5 35 23.5 29" stroke="#fff" stroke-width="3"/>`
+  ),
+  pylon: svg(
+    `${line2('M10 30 C5.5 37 5.5 45 10 52 M54 30 C58.5 37 58.5 45 54 52', SURF, 3)}${line2('M16 36 C14 40 14 44 16 48 M48 36 C50 40 50 44 48 48', SURF, 2.5)}` +
+      `<path d="M23.5 61 L27 31 H37 L40.5 61 Z" fill="${STEEL}"/><path d="M26 41 H38 M25 51 H39" stroke="${PURPLE}" stroke-width="3"/>` +
+      `<path d="M21 6 V15 A11 11 0 0 0 43 15 V6" stroke-width="15" stroke-linecap="butt"/><path d="M21 6 V15 A11 11 0 0 0 43 15 V6" stroke="${HOT}" stroke-width="8" stroke-linecap="butt"/>` +
+      `<rect x="14.5" y="2" width="13" height="7.5" rx="1.5" fill="${STEEL}" stroke-width="3"/><rect x="36.5" y="2" width="13" height="7.5" rx="1.5" fill="${STEEL}" stroke-width="3"/>`
+  ),
+  // characters: raptor head portraits
+  rex: raptor('#2EC4B6', '#138A80', '#C8F7EC', {
+    over:
+      `<path d="M14.5 27 C13.5 15 22 7 33 7 C43 7 50.5 12 52.5 20 L61.5 21.5 C63 23.5 62 25.5 59.5 25.5 L15 27.5 Z" fill="${SUN}"/>` +
+      `<path d="M21 15.5 C24 11.8 29 10 34 10" stroke="#FFC78A" stroke-width="3"/><circle cx="24" cy="21.5" r="3" fill="${INK}" stroke="none"/>`,
+  }),
+  zappy: raptor('#3DA5FF', '#1F6FC2', '#D2ECFF', {
+    over:
+      `<path d="M20 19 C23 11 20.5 5 12 1.5 C23 0.5 34 5 41 11 C44 14 45.5 16.5 46 19 Z" fill="${PURPLE}"/>` +
+      `<ellipse cx="33.5" cy="20" rx="20" ry="4.6" transform="rotate(-9 33.5 20)" fill="${PURPLE}"/>` +
+      `<path d="${starPath(30.5, 12, 4.6, 2, 5)}" fill="${VOLT}" stroke-width="2"/>${line2('M59 4 L55 10.5 H60 L56 17', VOLT, 2.5)}`,
+  }),
+  nana: raptor('#F7C531', '#D39A00', '#FFF4C2', {
+    over:
+      `<path d="M11.5 26 C13.5 12 30 4.5 48.5 9.5 C52.5 10.5 53.5 14.5 50.5 15.2 C35.5 12.5 23 17.5 17 28.5 Z" fill="#FFEE70"/>` +
+      `<path d="M15.5 21 C20 13 32 9.5 44 10.8" stroke="#E8A80C" stroke-width="2.5"/><circle cx="51.8" cy="12.6" r="2.7" fill="#7A4B22" stroke-width="2"/>` +
+      `<path d="M11.5 26 L7.5 28.5" stroke-width="6"/><path d="M11.5 26 L7.5 28.5" stroke="#8CC63F" stroke-width="2.5"/>`,
+  }),
+  blaze: raptor('#FF6A3D', '#C2381A', '#FFD6BE', {
+    under:
+      `<path d="M16 27 C11 20 12 12 17 6 C17 12 20 15 23 16 C22 9 26 3.5 32 1 C30 8 33 12 37 13.5 C38 9.5 41 7 45 6 C43 11 45 15 48 18 L22 24 Z" fill="${SUN}"/>` +
+      `<path d="M21 21 C19 17 20 13.5 22 11 C23 14 25 16 28 17 C27.5 13 29.5 10 32.5 8.5 C32.5 12.5 34.5 15 38 16.5 Z" fill="${VOLT}" stroke="none"/>`,
+    over:
+      `<path d="M16.5 23.5 L30 20.5" stroke-width="7"/><path d="M16.5 23.5 L30 20.5" stroke="${HOT}" stroke-width="3"/>` +
+      `<circle cx="36.5" cy="18.5" r="7.5" fill="${STEEL}"/><circle cx="36.5" cy="18.5" r="4.4" fill="${SURF}" stroke-width="2.5"/><path d="M34.2 16.8 L36 15" stroke="#fff" stroke-width="2"/>`,
+  }),
+  tank: raptor('#8A9A3B', '#5E6B22', '#DDE6AE', {
+    over:
+      `<path d="M21 12.5 C15 4.5 7 4 2.5 9 C7.5 9 10.5 12 11.5 16 C8.5 16 5.5 18 4.5 22 C10.5 19 15.5 19 19.5 21 Z" fill="${HOT}"/>` +
+      `<path d="M13 31.5 C12 18 21 9 33 9 C44 9 51 15 53 23.5 L53 26.5 L14 32.5 Z" fill="${STEEL}"/>` +
+      `<path d="M25.5 13.5 C35 9.5 46 12 52 19 L53 23 C45 18 35 16 26.5 18.5 Z" fill="#B3ACC8"/><path d="M33 14.5 H45" stroke-width="2"/>` +
+      `<circle cx="18" cy="25.5" r="1.8" fill="${INK}" stroke="none"/><circle cx="19.6" cy="19" r="1.8" fill="${INK}" stroke="none"/><path d="M17 14.5 C19 12.5 22 11 25 10.5" stroke="#fff" stroke-width="2.5"/>`,
+  }),
+  goldie: raptor('#FFC21A', '#D18A00', '#FFF1B8', {
+    noEye: true,
+    over:
+      `<path d="M20 18 L17.5 4 L26 10.5 L32 1.5 L38 10.5 L46.5 5 L44 19 C36 16 28 16 20 18 Z" fill="${VOLT}"/>` +
+      `<circle cx="32" cy="12.5" r="2.3" fill="${HOT}" stroke-width="1.8"/><circle cx="24.5" cy="14.3" r="1.8" fill="${SURF}" stroke-width="1.6"/><circle cx="39.5" cy="13.8" r="1.8" fill="${SURF}" stroke-width="1.6"/>` +
+      `<path d="M15.5 30.5 L30 28.5" stroke-width="3.5"/><path d="M29.5 26.5 H50 C50 33 47.5 37 41.5 37 C35.5 37 29.5 33.5 29.5 26.5 Z" fill="${INK}" stroke-width="3"/>` +
+      `<path d="M33.5 29.5 L38 29.5 M44 29.5 L46 29.5" stroke="#fff" stroke-width="2"/>`,
+  }),
+  // islands (prefixed: plain 'frost' is the Frost Nova weapon)
+  'island-tropical': svg(
+    `${line2('M3 56 C7 53 11 59 15 56 M49 56 C53 53 57 59 61 56', SURF, 3)}<path d="M9 54 C15 44 49 44 55 54 Z" fill="#F1DB9C"/>` +
+      `<path d="M31 51 C30 41 31 31 37 22" stroke-width="9"/><path d="M31 51 C30 41 31 31 37 22" stroke="${WOOD}" stroke-width="4.5"/>` +
+      `<path d="M37 22 C31 13 20 13 12 20 C21 19 29 20 37 22 Z M37 22 C38 12 47 6.5 57 9.5 C49.5 12.5 43.5 16 37 22 Z M37 22 C45.5 18 55.5 21 59.5 30.5 C51.5 26 44 24 37 22 Z M37 22 C31 24.5 25 30 23.5 37.5 C29 30.5 33 26.5 37 22 Z" fill="${GREEN}"/>` +
+      `<circle cx="34.5" cy="25.5" r="2.9" fill="#7A4B22" stroke-width="2.5"/><circle cx="39.5" cy="26" r="2.9" fill="#7A4B22" stroke-width="2.5"/>`
+  ),
+  'island-frost': svg(
+    `<path d="M3 57 L20 27 L28 38 L40 13 L61 57 Z" fill="#A9C4E6"/><path d="M40 13 L61 57 H45 L47 33 Z" fill="#7F9CC7" stroke="none"/><path d="M3 57 L20 27 L28 38 L40 13 L61 57 Z"/>` +
+      `<path d="M40 13 L48.8 31.5 L44.2 29.5 L40.5 33.8 L36.5 28.5 L32.6 30.8 Z M20 27 L25.3 36.4 L22.6 35.2 L19.6 38.2 L16.6 34.2 Z" fill="#fff" stroke-width="3"/>` +
+      `<path d="${starPath(13, 13, 7, 2.2, 4)}" fill="#E6FCFF" stroke-width="2.5"/><path d="${starPath(55, 22, 4, 1.4, 4)}" fill="#E6FCFF" stroke-width="2"/>`
+  ),
+  'island-desert': svg(
+    `<circle cx="44" cy="19" r="11.5" fill="${VOLT}"/><path d="M40 13 C42 11.5 44 11 46 11" stroke="#fff" stroke-width="3"/>` +
+      `<path d="M22 46 C32 33 47 31 62 40 V58 H22 Z" fill="#E59E4F"/><path d="M2 58 C9 43 26 40 40 50 C46 54 54 54 62 52 V58 Z" fill="#F7C97F"/>` +
+      `<path d="M16 52 V29 C16 25 22 25 22 29 V36 H25 V31.5 C25 28.5 29 28.5 29 31.5 V37.5 C29 40 27.5 41.5 25 41.5 H22 V52 Z M16 41 H13 C11 41 10 40 10 38 V33 C10 30 14 30 14 33 V36 H16" fill="${GREEN}"/>`
+  ),
+  'island-grave': svg(
+    `<path d="M49 4 C41 6.5 38 16.5 43 23 C47 28 55 28 59 23.5 C53 24 47 20 46 14 C45.5 10 46.5 6.5 49 4 Z" fill="#FFF3C4"/>` +
+      `<path d="M3 58 C8 46 22 42 34 44 C46 46 56 50 61 58 Z" fill="#3E6A64"/>` +
+      `<path d="M20 50 V27 C20 18.5 37 18.5 37 27 V50 Z" fill="#B7B0C8"/><path d="M28.5 26.5 V41 M23.5 31.5 H33.5" stroke-width="3.5"/>` +
+      `<path d="M43 45 V36.5 C43 30.5 54 30.5 54 36.5 V46 L51.3 43.8 L48.5 46 L45.7 43.8 Z" fill="${PAPER}" stroke-width="3"/>` +
+      `<circle cx="46.7" cy="37.3" r="1.4" fill="${INK}" stroke="none"/><circle cx="50.5" cy="37.3" r="1.4" fill="${INK}" stroke="none"/>` +
+      `<path d="M9 52 L11 47.5 L13 52 M55 54 L57 49.5 L59 54" stroke="${PURPLE}" stroke-width="2.5"/>`
+  ),
+  'island-volcano': svg(
+    `<circle cx="27" cy="10" r="6.5" fill="#7B6A9E"/><circle cx="37" cy="7" r="5.5" fill="#7B6A9E"/><circle cx="31" cy="15" r="4.5" fill="#7B6A9E" stroke="none"/>` +
+      `<path d="M3 59 L23 25 H41 L61 59 Z" fill="#5A2A20"/><path d="M41 25 L61 59 H47 L37 32 Z" fill="#3A1812" stroke="none"/><path d="M3 59 L23 25 H41 L61 59 Z"/>` +
+      `<path d="M23 25 H41 L38.5 31 L36 36.5 L33.8 30.5 L31 43 L28 30.5 L26 34 Z" fill="${SUN}" stroke-width="3"/><path d="M26 26 H38" stroke="${VOLT}" stroke-width="2.5"/>` +
+      `<circle cx="16" cy="18" r="2" fill="${VOLT}" stroke="none"/><circle cx="48" cy="15" r="2.4" fill="${SUN}" stroke="none"/><circle cx="52" cy="24" r="1.6" fill="${VOLT}" stroke="none"/>`
+  ),
+  // misc
+  portal: svg(
+    `<ellipse cx="32" cy="33" rx="22.5" ry="28.5" fill="#6B5AA8"/><ellipse cx="32" cy="34" rx="15.5" ry="21" fill="${PURPLE}"/>` +
+      `<ellipse cx="32" cy="35" rx="9" ry="13" fill="#E3B8FF" stroke="none" opacity=".55"/>` +
+      line2('M32 35 C35.5 35 36.5 30.5 33 29 C28 27 24.5 32.5 26 37 C28.5 43.5 38 44 41 36.5 C43.5 28 37 19.5 28.5 21', SURF, 3) +
+      `<path d="M12.5 21 L15.5 23 M10.5 33 H14 M12.5 45 L15.5 43 M51.5 21 L48.5 23 M53.5 33 H50 M51.5 45 L48.5 43" stroke="${VOLT}" stroke-width="2.5"/>`
+  ),
+  lock: svg(
+    `<path d="M20 30 V20 C20 12 25.5 7 32 7 C38.5 7 44 12 44 20 V30" stroke-width="11"/><path d="M20 30 V20 C20 12 25.5 7 32 7 C38.5 7 44 12 44 20 V30" stroke="${STEEL}" stroke-width="5"/>` +
+      `<rect x="12" y="27" width="40" height="31" rx="6" fill="${VOLT}"/><path d="M17.5 33 V41" stroke="#fff" stroke-width="3"/>` +
+      `<circle cx="32" cy="40" r="4.6" fill="${INK}" stroke="none"/><path d="M30 42 L28.8 50.5 H35.2 L34 42 Z" fill="${INK}" stroke="none"/>`
+  ),
+  trophy: svg(
+    `${line2('M17 13 H8.5 C8.5 25 13 30.5 20 31.5 M47 13 H55.5 C55.5 25 51 30.5 44 31.5', VOLT, 4)}` +
+      `<path d="M16 5.5 H48 V20 C48 31 41 38 32 38 C23 38 16 31 16 20 Z" fill="${VOLT}"/><path d="M22 10.5 V21" stroke="#fff" stroke-width="3.5"/>` +
+      `<path d="${starPath(33, 20, 7.5, 3.3, 5)}" fill="${SUN}" stroke-width="2.5"/><path d="M28 37 H36 L37.5 46.5 H26.5 Z" fill="#FFC21A"/>` +
+      `<rect x="18.5" y="46" width="27" height="12" rx="2.5" fill="${SUN}"/><path d="M25 52 H39" stroke="${PAPER}" stroke-width="2.5"/>`
+  ),
+  quest: svg(
+    `<rect x="15" y="9" width="34" height="44" rx="3" fill="${PAPER}"/><path d="M21 21 H43 M21 28 H43 M21 35 H33" stroke="#B9A98A" stroke-width="3"/>` +
+      `<rect x="10" y="5" width="44" height="9" rx="4.5" fill="${WOOD}"/><rect x="10" y="49" width="44" height="9" rx="4.5" fill="${WOOD}"/>` +
+      `<circle cx="44.5" cy="40.5" r="9" fill="${HOT}"/><path d="M44.5 35.5 V41.5" stroke="#fff" stroke-width="3.5"/><circle cx="44.5" cy="45.6" r="1.9" fill="#fff" stroke="none"/>`
+  ),
+  perk: svg(
+    `<path d="M22 40 L16 61 L24 56 L29 62 L32 44 Z M42 40 L48 61 L40 56 L35 62 L32 44 Z" fill="${HOT}"/>` +
+      `<path d="${ngon(32, 27, 23, 6)}" fill="${PURPLE}"/><path d="${ngon(32, 27, 15.5, 6)}" fill="#8E3FE0" stroke="none"/>` +
+      line2('M22.5 31 L32 21.5 L41.5 31 M22.5 39 L32 29.5 L41.5 39', VOLT, 4)
+  ),
+  check: svg(`<circle cx="32" cy="32" r="26" fill="${LIME}"/><path d="M18.5 33 L28 42.5 L46 22" stroke-width="9"/><path d="M18.5 33 L28 42.5 L46 22" stroke="#fff" stroke-width="3.5"/>`),
+};
+// plain island-name aliases ('frost' stays the weapon; use 'island-frost' for the island)
+for (const b of ['tropical', 'desert', 'grave', 'volcano']) BASE_ICONS[b] = BASE_ICONS['island-' + b];
+// stat / reward id aliases so Moai stat cards etc. get a sensible icon
+const ICON_ALIAS = {
+  damage: 'might', dmg: 'might', attackspeed: 'haste', cooldown: 'haste', projectiles: 'multishot', area: 'size', speed: 'zoomies',
+  movespeed: 'zoomies', pickup: 'magnet', hp: 'vitality', maxhp: 'vitality', health: 'vitality', heal: 'heal', crit: 'crit', xp: 'wisdom',
+  jump: 'springs', gold: 'coin', greedidol: 'greed', shrine: 'blessing', island: 'portal', boss: 'skull', moaiblessing: 'moai',
+};
+const iconKey = (id) => {
+  if (typeof id !== 'string') return 'star';
+  if (Object.prototype.hasOwnProperty.call(BASE_ICONS, id)) return id;
+  const a = ICON_ALIAS[id.toLowerCase().replace(/[^a-z]/g, '')];
+  return a && BASE_ICONS[a] ? a : 'star';
 };
 
 /** id -> inline SVG string. Unknown ids fall back to the generic star. */
 export const ICONS = new Proxy(BASE_ICONS, {
   get(t, k) {
     if (k in t) return t[k];
-    return typeof k === 'string' ? t.star : undefined;
+    return typeof k === 'string' ? t[iconKey(k)] : undefined;
   },
 });
 
@@ -249,10 +480,43 @@ function nodeFrom(key, html) {
   return t.content.firstChild.cloneNode(true);
 }
 const iconNode = (id) => {
-  const key = Object.prototype.hasOwnProperty.call(BASE_ICONS, id) ? id : 'star';
+  const key = iconKey(id);
   return nodeFrom(key, BASE_ICONS[key]);
 };
 const burstNode = () => nodeFrom('__burst', BURST);
+function rewardIcon(rw) {
+  if (!rw) return 'star';
+  const id = rw.id;
+  const has = (k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(BASE_ICONS, k);
+  switch (rw.kind) {
+    case 'island':
+      return 'island-' + (BIOMES[id] ? id : BIOME_ORDER[(+id | 0) - 1] || 'tropical');
+    case 'perk':
+      return has(id) ? id : 'perk';
+    case 'shrine':
+      return has(id) ? id : 'blessing';
+    case 'character':
+      return has(id) ? id : 'rex';
+    case 'weapon':
+      return has(id) ? id : 'bat';
+    case 'tome':
+      return has(id) ? id : iconKey(id) !== 'star' ? iconKey(id) : 'wisdom';
+  }
+  return iconKey(id);
+}
+function islandMedal(biome, n, status) {
+  const md = el('span', 'vb-md');
+  md.style.setProperty('--bc', BIOMES[biome].c);
+  md.style.setProperty('--bd', BIOMES[biome].d);
+  md.append(iconNode('island-' + biome));
+  if (n != null) md.append(el('span', 'vb-md-n', String(n)));
+  if (status) {
+    const st = el('span', 'vb-md-st');
+    st.append(iconNode(status));
+    md.append(st);
+  }
+  return md;
+}
 
 function flameStrip(seed, hmin, hvar) {
   // fat tongues that lean backwards (to the left) like they're being dragged by speed
@@ -300,6 +564,16 @@ const LOGO = 'VELOCIBONK'
   .join('');
 const CHEV = `<svg viewBox="0 0 40 24" aria-hidden="true" focusable="false"><path d="M4 3 L15 12 L4 21 M20 3 L31 12 L20 21" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
+const HOW_SHRINES = [
+  ['coin', 'CHEST', 'Costs gold — walk in to open'],
+  ['blessing', 'BLESSING', 'Stand in it for a free tome'],
+  ['moai', 'MOAI', 'Pick a raw stat. Never caps'],
+  ['totem', 'TOTEM', 'Timed kill trial → epic loot'],
+  ['greed', 'GREED IDOL', 'More gold & XP, tougher foes'],
+  ['pylon', 'PYLON', 'Pulls in every gem'],
+]
+  .map(([ic, k, t]) => `<li><span class="vb-how-ic">${BASE_ICONS[ic]}</span><b>${k}</b><span>${t.replace('&', '&amp;')}</span></li>`)
+  .join('');
 const HOWTO = `
 <div class="vb-how">
   <section class="vb-how-col">
@@ -309,7 +583,7 @@ const HOWTO = `
       <div><dt><kbd class="w">MOUSE</kbd></dt><dd>Look — click to lock the cursor</dd></div>
       <div><dt><kbd class="w">SPACE</kbd></dt><dd>Jump / double jump — hold to auto-hop</dd></div>
       <div><dt><kbd class="w">SHIFT</kbd></dt><dd>Slide on the ground · <b>SLAM</b> when airborne</dd></div>
-      <div><dt><kbd class="w">ESC</kbd></dt><dd>Pause</dd></div>
+      <div><dt><kbd class="w">ESC</kbd></dt><dd>Pause · weapons fire on their own</dd></div>
     </dl>
   </section>
   <section class="vb-how-col">
@@ -322,20 +596,35 @@ const HOWTO = `
     </ul>
   </section>
   <section class="vb-how-col">
-    <h3>SURVIVE</h3>
+    <h3>ISLAND RUN</h3>
     <ul class="vb-rules">
-      <li><b>AUTO</b><span>Weapons fire automatically</span></li>
-      <li><b>CHESTS</b><span>Cost gold — walk in to open</span></li>
-      <li><b>SHRINES</b><span>Stand in them for blessings</span></li>
-      <li><b class="hot">BOSSES</b><span>At 3:00, 6:00 and 9:00 · FINAL SWARM at 10:00</span></li>
+      <li><b>8:00</b><span>Every island runs on a countdown</span></li>
+      <li><b class="pur">PORTAL</b><span>The <em class="pur">BOSS PORTAL</em> (minimap) summons the final boss early for bonus score</span></li>
+      <li><b class="hot">0:00</b><span>The boss comes anyway, and the <em>FINAL SWARM</em> hunts you until it dies</span></li>
+      <li><b class="win">EXIT</b><span>Bonk it to open the <em class="win">EXIT PORTAL</em>. A first clear unlocks the next island; runs chain up to 5 islands with rising level caps</span></li>
     </ul>
   </section>
+  <section class="vb-how-shr">
+    <h3>SHRINES &amp; LOOT</h3>
+    <ul>${HOW_SHRINES}</ul>
+  </section>
   <div class="vb-how-callout"><span class="k">SCORE</span><span>=</span><span>KILLS</span><span>×</span><span class="m">MOMENTUM</span></div>
+  <p class="vb-how-q"><span class="vb-how-ic">${BASE_ICONS.quest}</span><span><b>QUESTS</b> unlock weapons, tomes, raptors and perks. Check the board on the title screen.</span></p>
 </div>`;
 
 const TEMPLATE = `
+<div class="vb-bi" data-r="bi" aria-hidden="true">
+  <div class="vb-bi-bar vb-bi-t"></div><div class="vb-bi-bar vb-bi-b"></div>
+  <div class="vb-bi-card">
+    <div class="vb-bi-stripe"></div>
+    <div class="vb-bi-row"><span class="vb-bi-ic">${BASE_ICONS.skull}</span><span class="vb-bi-title" data-r="biTitle"></span></div>
+    <div class="vb-bi-name vb-ot" data-r="biName" data-t=""></div>
+    <div class="vb-bi-warn">FINAL BOSS</div>
+  </div>
+</div>
 <div class="vb-hud" data-r="hud" data-tier="0" aria-hidden="true">
   <div class="vb-speedlines"></div>
+  <div class="vb-swarmglow"></div>
   <div class="vb-vignette"></div>
   <div class="vb-hitflash" data-r="hitflash"></div>
   <div class="vb-tl">
@@ -353,11 +642,16 @@ const TEMPLATE = `
     </div>
   </div>
   <div class="vb-tc">
+    <div class="vb-isl" data-r="isl"><i class="vb-isl-dot"></i><span data-r="islText"></span></div>
     <div class="vb-timer vb-ot" data-r="timer" data-t="00:00">00:00</div>
     <div class="vb-score"><b data-r="score">0</b><span class="k">PTS</span></div>
     <div class="vb-phase vb-empty" data-r="phase"></div>
+    <div class="vb-trial" data-r="trial">
+      <div class="vb-trial-top"><span class="vb-trial-k">${BASE_ICONS.totem}TRIAL</span><span class="vb-trial-l" data-r="trialLabel"></span><b data-r="trialCount"></b><span class="vb-trial-t" data-r="trialTime"></span></div>
+      <div class="vb-trial-bar"><i data-r="trialFill"></i></div>
+    </div>
     <div class="vb-boss" data-r="boss">
-      <div class="vb-boss-name"><span class="vb-boss-ic">${BASE_ICONS.skull}</span><span data-r="bossName">BOSS</span></div>
+      <div class="vb-boss-name"><span class="vb-boss-ic">${BASE_ICONS.skull}</span><span data-r="bossName">BOSS</span><span class="vb-boss-rage" data-r="bossRage">ENRAGED</span></div>
       <div class="vb-boss-bar"><div class="vb-boss-ghost" data-r="bossGhost"></div><div class="vb-boss-fill" data-r="bossFill"></div><div class="vb-boss-segs"></div></div>
     </div>
   </div>
@@ -391,6 +685,19 @@ const TEMPLATE = `
 </div>
 <div class="vb-prompt" data-r="prompt" role="status"></div>
 <div class="vb-announce" data-r="announce" aria-live="polite"></div>
+<div class="vb-qpop" data-r="qpop" aria-live="polite"></div>
+<section class="vb-isle" data-r="isle" aria-live="polite">
+  <div class="vb-isle-bg"></div>
+  <div class="vb-isle-warp"></div>
+  <div class="vb-isle-in">
+    <div class="vb-isle-step" data-r="isleStep"></div>
+    <div class="vb-isle-md" data-r="isleMd"></div>
+    <h2 class="vb-isle-name vb-ot" data-r="isleName" data-t=""></h2>
+    <div class="vb-isle-sub" data-r="isleSub"></div>
+    <div class="vb-isle-caps" data-r="isleCaps"><span class="k">LEVEL CAPS</span><span data-r="isleCapsText"></span></div>
+    <ol class="vb-isle-dots" data-r="isleDots"></ol>
+  </div>
+</section>
 
 <section class="vb-screen vb-modal vb-lu" data-r="lu" role="dialog" aria-modal="true" aria-labelledby="vb-lu-title" data-kind="level">
   <div class="vb-dim"></div>
@@ -422,12 +729,13 @@ const TEMPLATE = `
 </section>
 
 <section class="vb-screen vb-modal vb-over" data-r="over" role="dialog" aria-modal="true" aria-label="Game over">
-  <div class="vb-over-bg"></div>
+  <div class="vb-over-bg"><div class="vb-over-rays"></div><div class="vb-confetti" data-r="confetti"></div></div>
   <div class="vb-over-wrap">
     <div class="vb-over-left">
       <div class="vb-over-mode" data-r="ovMode"></div>
-      <h1 class="vb-bonked vb-ot" data-t="BONKED.">BONKED.</h1>
+      <h1 class="vb-bonked vb-ot" data-r="ovHead" data-t="BONKED.">BONKED.</h1>
       <div class="vb-rank"><span class="k">RANK</span><b data-r="ovRank"></b></div>
+      <div class="vb-ov-isl" data-r="ovIsl"></div>
       <div class="vb-over-score">
         <div class="k">FINAL SCORE</div>
         <div class="vb-over-num vb-ot" data-r="ovScore" data-t="0">0</div>
@@ -443,6 +751,7 @@ const TEMPLATE = `
       <div class="vb-share" data-r="ovShare"><div class="k" data-r="ovShareMsg">Clipboard is blocked here — copy this:</div><textarea data-r="ovShareTa" readonly rows="3" spellcheck="false"></textarea></div>
     </div>
     <div class="vb-over-right vb-panel">
+      <div class="vb-ov-rewards" data-r="ovRewards"></div>
       <div class="vb-card-head">DAMAGE BY WEAPON</div>
       <div class="vb-dmg" data-r="ovDmg"></div>
       <div class="vb-card-head">PERSONAL BESTS</div>
@@ -461,14 +770,36 @@ const TEMPLATE = `
         <div class="vb-tagline"><span>SPEED IS <em>DAMAGE.</em></span></div>
       </div>
       <div class="vb-challenge" data-r="challenge"><span class="vb-challenge-ic">${BASE_ICONS.challenge}</span><span data-r="challengeText"></span></div>
+      <div class="vb-arch" data-r="arch" hidden>
+        <div class="vb-arch-head"><span>THE ARCHIPELAGO</span><b data-r="archCount"></b></div>
+        <ol class="vb-arch-list" data-r="archList"></ol>
+      </div>
       <nav class="vb-menu" aria-label="Main menu">
         <button type="button" class="vb-btn vb-btn-xl vb-btn-sun" data-r="btnDaily"><span class="vb-btn-in"><span class="vb-btn-stack"><span data-r="dailyLabel">PLAY DAILY</span><small data-r="dateLabel"></small></span><span class="vb-btn-go">${CHEV}</span></span></button>
         <button type="button" class="vb-btn vb-btn-lg vb-btn-surf" data-r="btnRandom"><span class="vb-btn-in">RANDOM ISLAND</span></button>
         <div class="vb-menu-row">
+          <button type="button" class="vb-btn vb-btn-md vb-btn-volt vb-btn-quests" data-r="btnQuests" hidden><span class="vb-btn-in"><span class="vb-btn-ic">${BASE_ICONS.trophy}</span>QUESTS<span class="vb-badge" data-r="questBadge"></span></span></button>
           <button type="button" class="vb-btn vb-btn-md" data-r="btnHow"><span class="vb-btn-in">HOW TO PLAY</span></button>
           <button type="button" class="vb-btn vb-btn-md" data-r="btnSet"><span class="vb-btn-in">SETTINGS</span></button>
         </div>
       </nav>
+    </div>
+    <div class="vb-chars" data-r="chars" role="group" aria-label="Choose your raptor" hidden>
+      <div class="vb-chars-label"><span data-r="charLabel">CHOOSE YOUR RAPTOR</span><span class="vb-chars-keys"><kbd>←</kbd><kbd>→</kbd></span></div>
+      <div class="vb-char-row">
+        <button type="button" class="vb-char-arrow vb-prev" data-r="charPrev" aria-label="Previous raptor"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M16 3 L6 12 L16 21 Z"/></svg></button>
+        <div class="vb-char-plate" data-r="charPlate" aria-live="polite">
+          <div class="vb-char-pic" data-r="charPic"></div>
+          <div class="vb-char-info">
+            <div class="vb-char-top"><span class="vb-char-name vb-ot" data-r="charName" data-t=""></span><span class="vb-char-title" data-r="charTitle"></span><span class="vb-char-tag" data-r="charTag"></span></div>
+            <div class="vb-char-line" data-r="charPassiveRow"><span class="k">PASSIVE</span><span class="vb-char-clamp" data-r="charPassive"></span></div>
+            <div class="vb-char-line" data-r="charStartRow"><span class="k">STARTS WITH</span><span class="vb-char-wic" data-r="charStartIc"></span><span data-r="charStart"></span></div>
+            <div class="vb-char-req" data-r="charReqRow"><span class="vb-char-lock">${BASE_ICONS.lock}</span><span data-r="charReq"></span></div>
+          </div>
+        </div>
+        <button type="button" class="vb-char-arrow vb-next" data-r="charNext" aria-label="Next raptor"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3 L18 12 L8 21 Z"/></svg></button>
+      </div>
+      <div class="vb-char-dots" data-r="charDots"></div>
     </div>
     <aside class="vb-side">
       <div class="vb-panel vb-bests-card">
@@ -477,8 +808,8 @@ const TEMPLATE = `
         <div class="vb-daily-note">One island per day. Same seed for everyone.</div>
       </div>
     </aside>
+    <p class="vb-footer">Every model, texture, sound and song is generated in code at load time.</p>
   </div>
-  <p class="vb-footer">Every model, texture, sound and song is generated in code at load time.</p>
   <div class="vb-sheet" data-r="howSheet" role="dialog" aria-modal="true" aria-label="How to play">
     <div class="vb-panel vb-sheet-panel">
       <h2 class="vb-h vb-ot" data-t="HOW TO PLAY">HOW TO PLAY</h2>
@@ -492,6 +823,17 @@ const TEMPLATE = `
       <div data-r="titleSet"></div>
       <div class="vb-sheet-foot"><button type="button" class="vb-btn vb-btn-md vb-btn-sun" data-r="setBack"><span class="vb-btn-in">DONE</span></button></div>
     </div>
+  </div>
+</section>
+<section class="vb-screen vb-modal vb-qs" data-r="qs" role="dialog" aria-modal="true" aria-labelledby="vb-qs-title">
+  <div class="vb-dim" data-r="qsDim"></div>
+  <div class="vb-panel vb-qs-panel">
+    <div class="vb-qs-head">
+      <h2 class="vb-h vb-ot" id="vb-qs-title" data-t="QUESTS">QUESTS</h2>
+      <div class="vb-qs-sum"><div class="vb-qs-num"><b data-r="qsDone">0</b><span data-r="qsTotal">/0</span><small>COMPLETE</small></div><div class="vb-qs-bar"><i data-r="qsFill"></i></div></div>
+    </div>
+    <div class="vb-qs-body" data-r="qsBody" tabindex="0" aria-label="Quest list"></div>
+    <div class="vb-qs-foot"><button type="button" class="vb-btn vb-btn-md vb-btn-sun" data-r="qsBack"><span class="vb-btn-in">BACK</span></button><span class="vb-hint"><kbd class="w">ESC</kbd> CLOSE</span></div>
   </div>
 </section>
 <div class="vb-toasts" data-r="toasts" aria-live="polite"></div>
@@ -531,7 +873,10 @@ export class UI {
     for (let i = 0; i < 6; i++) this._addSlot(r.tSlots, this._tSlots);
 
     // state
-    this._last = { hp: -1, maxHp: -1, low: false, lv: -1, xq: -1, t: -1, sc: -1, k: -1, g: -1, kmh: -1, segs: -1, m10: -1, tier: -1, ram: false, ph: null, boss: false, bossName: null, bq: -1, fps: undefined };
+    this._last = {
+      hp: -1, maxHp: -1, low: false, lv: -1, xq: -1, t: -1, tMode: -1, tSt: -1, sc: -1, k: -1, g: -1, kmh: -1, segs: -1, m10: -1, tier: -1, ram: false,
+      ph: null, swarm: false, isl: null, trial: false, trLab: null, trP: -1, trG: -1, trT: -2, boss: false, bossName: null, bq: -1, rage: false, fps: undefined,
+    };
     this._lastS = null;
     this._hudOn = false;
     this._titleOpen = false;
@@ -543,7 +888,17 @@ export class UI {
     this._toasts = [];
     this._prompt = null;
     this._rl = Object.create(null);
-    this._mm = { w: 0, dpr: 0, ctx: r.mm.getContext('2d'), ocean: null };
+    this._mm = { w: 0, dpr: 0, ctx: r.mm.getContext('2d'), ocean: null, biome: null };
+    this._ch = { list: [], view: 0, sel: null, dots: [] };
+    this._qsOpen = false;
+    this._qp = { queue: [], cur: null, el: null, timer: 0, endAt: 0 };
+    // victory confetti (static nodes, animated only while .vb-victory is on)
+    const CONF = [VOLT, SUN, SURF, HOT, LIME, PAPER];
+    for (let i = 0; i < 26; i++) {
+      const c = el('i');
+      c.style.cssText = `--x:${((i * 37) % 100) + (i % 3)}%;--d:${(((i * 53) % 29) / 10).toFixed(1)}s;--s:${(2.6 + ((i * 17) % 13) / 5).toFixed(1)}s;--r:${(i * 47) % 360}deg;--c:${CONF[i % CONF.length]}`;
+      r.confetti.append(c);
+    }
 
     // settings (two instances: title sheet + pause inline) sharing this.settings
     this._syncSettings = [this._buildSettings(r.titleSet), this._buildSettings(r.pauseSet)];
@@ -596,6 +951,11 @@ export class UI {
     click(r.btnDaily, () => this._titleOpen && (this._blur(), this._call('onStart', 'daily')));
     click(r.btnRandom, () => this._titleOpen && (this._blur(), this._call('onStart', 'random')));
     click(r.btnHow, () => this._openSheet(r.howSheet, r.howBack));
+    click(r.btnQuests, () => this._titleOpen && this._call('onOpenQuests'));
+    click(r.charPrev, () => this._cycleChar(-1));
+    click(r.charNext, () => this._cycleChar(1));
+    click(r.qsBack, () => this._closeQuests());
+    r.qsDim.addEventListener('click', () => this._closeQuests());
     click(r.btnSet, () => this._openSheet(r.setSheet, r.setBack));
     click(r.howBack, () => this._closeSheets(r.btnHow));
     click(r.setBack, () => this._closeSheets(r.btnSet));
@@ -627,6 +987,9 @@ export class UI {
     window.removeEventListener('keydown', this._onKey);
     window.removeEventListener('resize', this._onResize);
     cancelAnimationFrame(this._cuRaf);
+    clearTimeout(this._qp.timer);
+    clearTimeout(this._biT);
+    clearTimeout(this._biT2);
     this.root.innerHTML = '';
     this.root.classList.remove('vb-root');
   }
@@ -652,6 +1015,13 @@ export class UI {
 
   _onKey(e) {
     const k = e.key;
+    if (this._qsOpen) {
+      if (k === 'Escape') {
+        e.preventDefault();
+        this._closeQuests();
+      }
+      return;
+    }
     if (this._over.open) return; // native button focus handles Enter/Space
     if (this._pauseOpen) {
       if ((k === 'Enter' || k === ' ' || k === 'Spacebar') && !e.repeat && !isInteractive(document.activeElement)) {
@@ -673,10 +1043,20 @@ export class UI {
       }
       return;
     }
-    if (this._titleOpen && k === 'Escape' && this._sheetOpen) {
-      e.preventDefault();
-      this._closeSheets();
+    if (!this._titleOpen) return;
+    if (this._sheetOpen) {
+      if (k === 'Escape') {
+        e.preventDefault();
+        this._closeSheets();
+      }
+      return;
     }
+    // character selector: ←/→ or A/D, only on the bare title (never while typing or with modifiers)
+    if (e.ctrlKey || e.metaKey || e.altKey || isTyping(document.activeElement) || this._ch.list.length < 2) return;
+    const d = k === 'ArrowLeft' || e.code === 'KeyA' ? -1 : k === 'ArrowRight' || e.code === 'KeyD' ? 1 : 0;
+    if (!d) return;
+    e.preventDefault();
+    if (!e.repeat || this._rate('char', 170)) this._cycleChar(d);
   }
 
   /* ------------------------------------------------------------ settings */
@@ -806,6 +1186,17 @@ export class UI {
       r.challenge.classList.add('vb-on');
     } else r.challenge.classList.remove('vb-on');
     this._renderBests(r.bests, o.bests, null);
+    this._renderArch(o.islands);
+    const q = o.quests;
+    r.btnQuests.hidden = !q;
+    if (q) {
+      const done = Math.max(0, q.done | 0);
+      const total = Math.max(0, q.total | 0);
+      r.questBadge.textContent = done + '/' + total;
+      r.btnQuests.classList.toggle('vb-all', total > 0 && done >= total);
+      r.btnQuests.setAttribute('aria-label', `Quests: ${done} of ${total} complete`);
+    }
+    this._setChars(o.characters, o.selectedChar);
     this._closeSheets();
     this._titleOpen = true;
     this._show(r.title);
@@ -817,6 +1208,7 @@ export class UI {
   hideTitle() {
     this._titleOpen = false;
     this._closeSheets();
+    if (this._qsOpen) this.hideQuests();
     this._hide(this.r.title);
   }
 
@@ -836,9 +1228,343 @@ export class UI {
     if (refocus && this._titleOpen) refocus.focus({ preventScroll: true });
   }
 
-  _renderBests(ol, bests, me) {
+  /* ------------------------------------------------ title: archipelago strip */
+
+  _renderArch(list) {
+    const r = this.r;
+    const L = Array.isArray(list) ? list.filter(Boolean).slice(0, 5) : [];
+    r.arch.hidden = !L.length;
+    r.archList.textContent = '';
+    if (!L.length) return;
+    const cleared = L.filter((x) => x.cleared).length;
+    r.archCount.textContent = cleared + '/' + L.length + ' CLEARED';
+    const next = L.findIndex((x) => x.unlocked !== false && !x.cleared);
+    L.forEach((x, i) => {
+      const n = x.n || i + 1;
+      const b = biomeOf(x.biome, n);
+      const locked = x.unlocked === false && !x.cleared;
+      const li = el('li', 'vb-arch-i ' + (x.cleared ? 'vb-cleared' : locked ? 'vb-locked' : 'vb-open') + (i === next ? ' vb-next' : ''));
+      li.style.setProperty('--bc', BIOMES[b].c);
+      const name = String(x.name || BIOMES[b].name).toUpperCase();
+      li.append(islandMedal(b, n, x.cleared ? 'check' : locked ? 'lock' : null), el('span', 'vb-arch-name', name));
+      if (x.best != null && !locked) li.append(el('span', 'vb-arch-best', compact(x.best)));
+      const st = x.cleared ? 'cleared' : locked ? 'locked' : 'unlocked';
+      li.title = `Island ${n}: ${name} — ${st}${x.best != null ? ' · best ' + commas(x.best) : ''}`;
+      li.setAttribute('aria-label', li.title);
+      r.archList.append(li);
+    });
+  }
+
+  /* ---------------------------------------------- title: character selector */
+
+  _setChars(list, selected) {
+    const r = this.r;
+    const C = this._ch;
+    C.list = Array.isArray(list) ? list.filter((c) => c && c.id != null) : [];
+    r.chars.hidden = !C.list.length;
+    r.title.classList.toggle('vb-has-chars', !!C.list.length);
+    r.charDots.textContent = '';
+    C.dots = [];
+    if (!C.list.length) return;
+    let i = C.list.findIndex((c) => c.id === selected && c.unlocked !== false);
+    if (i < 0) i = Math.max(0, C.list.findIndex((c) => c.unlocked !== false));
+    C.sel = C.list[i].unlocked !== false ? C.list[i].id : null;
+    C.dots = C.list.map((c, k) => {
+      const locked = c.unlocked === false;
+      const b = el('button', 'vb-char-dot' + (locked ? ' vb-locked' : ''));
+      b.type = 'button';
+      b.setAttribute('aria-label', locked ? `${c.secret ? 'Secret raptor' : c.name || c.id} (locked)` : String(c.name || c.id));
+      b.append(iconNode(c.id));
+      if (locked) {
+        const lk = el('span', 'vb-dot-lock');
+        lk.append(iconNode('lock'));
+        b.append(lk);
+      }
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._viewChar(k, true, k > C.view ? 1 : -1);
+      });
+      r.charDots.append(b);
+      return b;
+    });
+    this._viewChar(i, false, 0);
+  }
+
+  _cycleChar(d) {
+    const C = this._ch;
+    const n = C.list.length;
+    if (!this._titleOpen || n < 2) return;
+    this._viewChar((C.view + d + n) % n, true, d);
+  }
+
+  _viewChar(i, user, dir) {
+    const r = this.r;
+    const C = this._ch;
+    const c = C.list[i];
+    if (!c) return;
+    C.view = i;
+    const locked = c.unlocked === false;
+    const secret = locked && !!c.secret;
+    r.charPlate.classList.toggle('vb-locked', locked);
+    r.charPic.textContent = '';
+    r.charPic.append(iconNode(c.id));
+    if (locked) {
+      const lk = el('span', 'vb-pic-lock');
+      lk.append(iconNode('lock'));
+      r.charPic.append(lk);
+    }
+    const name = secret ? '???' : String(c.name || c.id).toUpperCase();
+    setOT(r.charName, name);
+    r.charName.classList.toggle('vb-long', name.length > 7);
+    r.charTag.textContent = locked ? 'LOCKED' : i + 1 + ' / ' + C.list.length;
+    r.charTitle.textContent = secret ? 'SECRET RAPTOR' : String(c.title || '').toUpperCase();
+    r.charPassive.textContent = secret ? '???' : String(c.passive || '—');
+    const starts = Array.isArray(c.start) ? c.start : c.start ? [c.start] : [];
+    r.charStartIc.textContent = '';
+    const names = starts.map((w) => {
+      const s = String(w);
+      const id = WEAPON_NAMES[s] ? s : starts.length === 1 && c.startId ? c.startId : Object.keys(WEAPON_NAMES).find((k) => WEAPON_NAMES[k].toLowerCase() === s.toLowerCase());
+      if (id && r.charStartIc.childNodes.length < 2) r.charStartIc.append(iconNode(id));
+      return WEAPON_NAMES[s] || s;
+    });
+    r.charStart.textContent = names.join(' + ');
+    r.charStartRow.hidden = locked || !names.length;
+    r.charPassiveRow.hidden = locked;
+    r.charReqRow.hidden = !locked;
+    r.charReq.textContent = locked ? (c.req ? String(c.req) : 'Keep playing to unlock') : '';
+    const cur = locked ? C.list.find((x) => x.id === C.sel) : null;
+    r.charLabel.textContent = cur ? 'LOCKED · PLAYING AS ' + String(cur.name || cur.id).toUpperCase() : 'CHOOSE YOUR RAPTOR';
+    r.chars.classList.toggle('vb-peek', locked);
+    r.chars.setAttribute('data-char', String(c.id));
+    for (let k = 0; k < C.dots.length; k++) {
+      C.dots[k].classList.toggle('vb-on', k === i);
+      C.dots[k].setAttribute('aria-current', k === i ? 'true' : 'false');
+    }
+    if (!locked && c.id !== C.sel) {
+      C.sel = c.id;
+      if (user) this._call('onSelectCharacter', c.id);
+    }
+    for (let k = 0; k < C.dots.length; k++) C.dots[k].classList.toggle('vb-sel', C.list[k].id === C.sel);
+    if (user && dir) anim(r.charPlate, [{ translate: (dir > 0 ? 0.9 : -0.9) + 'em 0', opacity: 0.35 }, { translate: '0 0', opacity: 1 }], REDUCED ? 60 : 260);
+  }
+
+  /* -------------------------------------------------------------- quests */
+
+  /** Full quest sheet. list: [{ id, name, desc, category, progress, goal, done, reward, bonus? }] */
+  showQuests(list) {
+    const r = this.r;
+    const L = Array.isArray(list) ? list.filter(Boolean) : [];
+    const done = L.filter((q) => q.done).length;
+    r.qsDone.textContent = done;
+    r.qsTotal.textContent = '/' + L.length;
+    r.qsFill.style.transform = 'scaleX(' + (L.length ? done / L.length : 0).toFixed(3) + ')';
+    const groups = new Map();
+    for (const q of L) {
+      const c = String(q.category || q.cat || 'OTHER').toUpperCase();
+      if (!groups.has(c)) groups.set(c, []);
+      groups.get(c).push(q);
+    }
+    const rank = (c) => (CAT_ORDER.indexOf(c) + 1 || 99);
+    const cats = [...groups.keys()].sort((a, b) => rank(a) - rank(b));
+    r.qsBody.textContent = '';
+    if (!L.length) r.qsBody.append(el('div', 'vb-empty', 'No quests yet.'));
+    for (const c of cats) {
+      const qs = groups.get(c);
+      const sec = el('section', 'vb-qs-cat');
+      const h = el('h3', 'vb-qs-cat-h');
+      const ic = el('span', 'vb-qs-cat-ic');
+      ic.append(iconNode(CAT_ICON[c] || 'quest'));
+      h.append(ic, el('span', null, c), el('b', null, qs.filter((q) => q.done).length + '/' + qs.length));
+      const ul = el('ul', 'vb-qs-list');
+      qs.forEach((q) => ul.append(this._questRow(q, c)));
+      sec.append(h, ul);
+      r.qsBody.append(sec);
+    }
+    this._qsOpen = true;
+    this._show(r.qs);
+    r.qsBody.scrollTop = 0;
+    setTimeout(() => this._qsOpen && !isTyping(document.activeElement) && r.qsBack.focus({ preventScroll: true }), 30);
+  }
+
+  hideQuests() {
+    if (!this._qsOpen) return;
+    this._qsOpen = false;
+    this._hide(this.r.qs);
+    if (this._titleOpen && !this._sheetOpen) setTimeout(() => this._titleOpen && !this._qsOpen && this.r.btnQuests.focus({ preventScroll: true }), 30);
+  }
+
+  _closeQuests() {
+    if (!this._qsOpen) return;
+    this.hideQuests();
+    this._call('onCloseQuests');
+  }
+
+  _questRow(q, cat) {
+    const goal = Math.max(1, +q.goal || 1);
+    const prog = q.done ? goal : Math.max(0, Math.min(goal, Math.floor(+q.progress || 0)));
+    const li = el('li', 'vb-q' + (q.done ? ' vb-done' : prog > 0 ? ' vb-going' : ''));
+    const ic = el('span', 'vb-q-ic');
+    ic.append(iconNode(q.done ? 'trophy' : q.icon || CAT_ICON[cat] || 'quest'));
+    if (q.done) {
+      const ck = el('span', 'vb-q-ck');
+      ck.append(iconNode('check'));
+      ic.append(ck);
+    }
+    const main = el('div', 'vb-q-main');
+    const top = el('div', 'vb-q-top');
+    top.append(el('b', 'vb-q-name', String(q.name || q.id || 'Quest')), el('span', 'vb-q-state', q.done ? 'DONE' : compact(prog) + ' / ' + compact(goal)));
+    const bar = el('div', 'vb-q-bar');
+    const fill = el('i');
+    fill.style.transform = 'scaleX(' + (prog / goal).toFixed(3) + ')';
+    bar.append(fill);
+    const rw = el('div', 'vb-q-rw');
+    const rewards = [q.reward, q.bonus].filter(Boolean);
+    if (rewards.length) rw.append(el('span', 'k', q.done ? 'UNLOCKED:' : 'UNLOCKS:'));
+    rewards.forEach((x, k) => {
+      if (k) rw.append(el('span', 'vb-q-plus', '+'));
+      const chip = el('span', 'vb-q-chip');
+      chip.append(iconNode(rewardIcon(x)), el('span', null, String(x.name || x.id)));
+      chip.title = KIND_LABEL[x.kind] || '';
+      rw.append(chip);
+    });
+    main.append(top, el('p', 'vb-q-desc', String(q.desc || '')), bar);
+    if (rewards.length) main.append(rw);
+    li.append(ic, main);
+    return li;
+  }
+
+  /** In-game celebration banner. Queues; never blocks input. */
+  questComplete(q = {}) {
+    if (this._over.open) return; // the game-over screen lists them (questsDone)
+    const Q = this._qp;
+    Q.queue.push({ name: String(q.name || 'Quest'), rewards: [q.reward, q.bonus].filter(Boolean) });
+    if (Q.queue.length > 8) Q.queue.shift();
+    if (!Q.cur) this._qpNext();
+    else if (Q.el && Q.endAt - performance.now() > 1500) {
+      clearTimeout(Q.timer);
+      Q.endAt = performance.now() + 1500;
+      Q.timer = setTimeout(() => this._qpOut(), 1500);
+    }
+  }
+
+  _qpNext() {
+    const Q = this._qp;
+    const item = Q.queue.shift();
+    if (!item) {
+      Q.cur = null;
+      return;
+    }
+    Q.cur = item;
+    const e = el('div', 'vb-qp');
+    const ic = el('span', 'vb-qp-ic');
+    ic.append(burstNode(), iconNode('trophy'));
+    const body = el('div', 'vb-qp-body');
+    const head = el('div', 'vb-qp-k');
+    head.append(el('span', null, 'QUEST COMPLETE'), el('b', 'vb-qp-name', item.name));
+    body.append(head);
+    if (item.rewards.length) {
+      const rw = el('div', 'vb-qp-rw');
+      rw.append(el('span', 'k', 'UNLOCKED:'));
+      item.rewards.forEach((x, i) => {
+        if (i) rw.append(el('span', 'k', '+'));
+        const c = el('span', 'vb-qp-chip');
+        c.append(iconNode(rewardIcon(x)), el('b', null, String(x.name || x.id)));
+        rw.append(c);
+      });
+      body.append(rw);
+    }
+    e.append(ic, body, el('span', 'vb-qp-shine'));
+    this.r.qpop.textContent = '';
+    this.r.qpop.append(e);
+    Q.el = e;
+    const dur = Q.queue.length ? 2600 : 3500;
+    Q.endAt = performance.now() + dur;
+    Q.timer = setTimeout(() => this._qpOut(), dur);
+  }
+
+  _qpOut() {
+    const Q = this._qp;
+    const e = Q.el;
+    Q.el = null;
+    if (!e) return this._qpNext();
+    e.classList.add('vb-out');
+    Q.timer = setTimeout(() => {
+      e.remove();
+      this._qpNext();
+    }, REDUCED ? 60 : 320);
+  }
+
+  /* ------------------------------------------------- island intro / boss intro */
+
+  /** Full-screen arrival card. { n, name, biome, subtitle, caps, total? } — the game hides it (~2.5 s). */
+  showIslandIntro(o = {}) {
+    const r = this.r;
+    const e = r.isle;
+    const total = Math.max(1, o.total | 0 || 5);
+    const n = Math.max(1, o.n | 0 || 1);
+    const b = biomeOf(o.biome, n);
+    e.style.setProperty('--bc', BIOMES[b].c);
+    e.style.setProperty('--bd', BIOMES[b].d);
+    e.setAttribute('data-biome', b);
+    r.isleStep.textContent = `ISLAND ${n} / ${total}`;
+    r.isleMd.textContent = '';
+    r.isleMd.append(iconNode('island-' + b));
+    const name = String(o.name || BIOMES[b].name).toUpperCase();
+    setOT(r.isleName, name);
+    r.isleName.classList.toggle('vb-long', name.length > 12);
+    r.isleSub.textContent = o.subtitle ? String(o.subtitle) : '';
+    r.isleSub.hidden = !o.subtitle;
+    r.isleCapsText.textContent = o.caps ? String(o.caps).toUpperCase() : '';
+    r.isleCaps.hidden = !o.caps;
+    r.isleDots.textContent = '';
+    for (let i = 1; i <= total; i++) {
+      const d = el('li', i < n ? 'vb-past' : i === n ? 'vb-cur' : '');
+      d.style.setProperty('--dc', BIOMES[BIOME_ORDER[i - 1]] ? BIOMES[BIOME_ORDER[i - 1]].c : PAPER);
+      r.isleDots.append(d);
+    }
+    clearTimeout(e._vbT);
+    e.classList.remove('vb-on', 'vb-leaving');
+    void e.offsetWidth; // restart the entrance animation
+    e.classList.add('vb-on');
+  }
+
+  hideIslandIntro() {
+    const e = this.r.isle;
+    if (!e.classList.contains('vb-on') || e.classList.contains('vb-leaving')) return;
+    e.classList.add('vb-leaving');
+    clearTimeout(e._vbT);
+    e._vbT = setTimeout(() => e.classList.remove('vb-on', 'vb-leaving'), REDUCED ? 60 : 420);
+  }
+
+  /** Cinematic letterbox + name card. { name, title, duration? } Auto-hides after ~2.4 s. */
+  bossIntro(o = {}) {
+    const r = this.r;
+    const e = r.bi;
+    clearTimeout(this._biT);
+    clearTimeout(this._biT2);
+    r.biTitle.textContent = String(o.title || 'FINAL BOSS').toUpperCase();
+    const name = String(o.name || 'BOSS').toUpperCase();
+    setOT(r.biName, name);
+    r.biName.classList.toggle('vb-long', name.length > 11);
+    e.classList.remove('vb-on', 'vb-out');
+    void e.offsetWidth;
+    e.classList.add('vb-on');
+    const dur = Math.max(0.8, o.duration ?? 2.4) * 1000;
+    this._biT = setTimeout(() => this.hideBossIntro(), dur);
+  }
+
+  hideBossIntro() {
+    const e = this.r.bi;
+    clearTimeout(this._biT);
+    if (!e.classList.contains('vb-on') || e.classList.contains('vb-out')) return;
+    e.classList.add('vb-out');
+    clearTimeout(this._biT2);
+    this._biT2 = setTimeout(() => e.classList.remove('vb-on', 'vb-out'), REDUCED ? 60 : 450);
+  }
+
+  _renderBests(ol, bests, me, max = 5) {
     ol.textContent = '';
-    const list = Array.isArray(bests) ? bests.slice(0, 5) : [];
+    const list = Array.isArray(bests) ? bests.slice(0, max) : [];
     if (!list.length) {
       ol.append(el('li', 'vb-empty', 'No runs yet. Go bonk something.'));
       return;
@@ -981,12 +1707,43 @@ export class UI {
       L.xq = xq;
     }
 
-    // timer / score / counters
-    const t = Math.floor(s.time || 0);
-    if (t !== L.t) {
-      setOT(r.timer, mmss(t));
-      L.t = t;
+    // timer: island countdown when timeLeft is given, else elapsed run time
+    if (s.timeLeft != null && isFinite(s.timeLeft)) {
+      const t = Math.max(0, Math.ceil(s.timeLeft));
+      if (t !== L.t || L.tMode !== 1) {
+        setOT(r.timer, mss(t));
+        const st = t === 0 ? 3 : t < 10 ? 2 : t < 60 ? 1 : 0;
+        if (st !== L.tSt || L.tMode !== 1) {
+          r.timer.className = 'vb-timer vb-ot vb-cd' + ['', ' vb-urgent', ' vb-urgent vb-crit', ' vb-zero'][st];
+          if (st === 3 && L.tSt >= 0 && L.tSt < 3) anim(r.timer, KF_POP, 450);
+          L.tSt = st;
+        }
+        L.t = t;
+        L.tMode = 1;
+      }
+    } else {
+      const t = Math.floor(s.time || 0);
+      if (t !== L.t || L.tMode !== 0) {
+        setOT(r.timer, mmss(t));
+        if (L.tMode !== 0) r.timer.className = 'vb-timer vb-ot';
+        L.t = t;
+        L.tMode = 0;
+        L.tSt = -1;
+      }
     }
+    const isl = s.island;
+    const ik = isl ? (isl.n | 0) + '|' + (isl.name || '') + '|' + (isl.biome || '') : '';
+    if (ik !== L.isl) {
+      if (isl) {
+        const b = biomeOf(isl.biome, isl.n);
+        r.islText.textContent = `ISLAND ${isl.n | 0 || 1} · ${String(isl.name || BIOMES[b].name).toUpperCase()}`;
+        r.isl.style.setProperty('--bc', BIOMES[b].c);
+        r.isl.classList.add('vb-on');
+      } else r.isl.classList.remove('vb-on');
+      L.isl = ik;
+    }
+
+    // score / counters
     const sc = Math.round(s.score || 0);
     if (sc !== L.sc) {
       r.score.textContent = commas(sc);
@@ -1035,14 +1792,52 @@ export class UI {
       L.ram = ram;
     }
 
-    // phase line
-    const ph = s.phase || '';
-    if (ph !== L.ph) {
+    // phase line (FINAL SWARM overrides it)
+    const swarm = !!s.swarm;
+    const ph = swarm ? 'FINAL SWARM — KILL THE BOSS' : s.phase || '';
+    if (ph !== L.ph || swarm !== L.swarm) {
       r.phase.textContent = ph;
       const mm = /(\d+):(\d\d)/.exec(ph);
       const soon = /BOSS IN/i.test(ph) && mm && +mm[1] * 60 + +mm[2] <= 10;
-      r.phase.className = 'vb-phase' + (!ph ? ' vb-empty' : /FIGHT|SWARM|!/i.test(ph) ? ' vb-danger' : soon ? ' vb-soon' : '');
+      r.phase.className = 'vb-phase' + (swarm ? ' vb-danger vb-swarm' : !ph ? ' vb-empty' : /FIGHT|SWARM|!/i.test(ph) ? ' vb-danger' : soon ? ' vb-soon' : '');
+      if (swarm !== L.swarm) r.hud.classList.toggle('vb-swarming', swarm);
       L.ph = ph;
+      L.swarm = swarm;
+    }
+
+    // challenge-totem trial
+    const tr = s.trial;
+    if (tr) {
+      if (!L.trial) {
+        r.trial.classList.add('vb-on');
+        L.trial = true;
+      }
+      const lab = String(tr.label || '').toUpperCase();
+      if (lab !== L.trLab) {
+        r.trialLabel.textContent = lab;
+        L.trLab = lab;
+      }
+      const goal = Math.max(1, Math.round(+tr.goal || 1));
+      const pr = Math.max(0, Math.min(goal, Math.floor(+tr.progress || 0)));
+      if (pr !== L.trP || goal !== L.trG) {
+        r.trialCount.textContent = pr + '/' + goal;
+        r.trialFill.style.transform = 'scaleX(' + (pr / goal).toFixed(3) + ')';
+        r.trial.classList.toggle('vb-won', pr >= goal);
+        L.trP = pr;
+        L.trG = goal;
+      }
+      const tt = tr.timeLeft != null && isFinite(tr.timeLeft) ? Math.max(0, Math.ceil(tr.timeLeft)) : -1;
+      if (tt !== L.trT) {
+        r.trialTime.textContent = tt >= 0 ? mss(tt) : '';
+        r.trial.classList.toggle('vb-hurry', tt >= 0 && tt <= 5 && pr < goal);
+        L.trT = tt;
+      }
+    } else if (L.trial) {
+      r.trial.classList.remove('vb-on', 'vb-hurry', 'vb-won');
+      L.trial = false;
+      L.trLab = null;
+      L.trP = L.trG = -1;
+      L.trT = -2;
     }
 
     // boss bar
@@ -1063,11 +1858,18 @@ export class UI {
         r.bossGhost.style.transform = tf;
         L.bq = bq;
       }
+      const rage = (s.bossPhase | 0) >= 2 || (b.phase | 0) >= 2;
+      if (rage !== L.rage) {
+        r.boss.classList.toggle('vb-enraged', rage);
+        if (rage) anim(r.bossRage, KF_POP, 420);
+        L.rage = rage;
+      }
     } else if (L.boss) {
-      r.boss.classList.remove('vb-on');
+      r.boss.classList.remove('vb-on', 'vb-enraged');
       L.boss = false;
       L.bq = -1;
       L.bossName = null;
+      L.rage = false;
     }
 
     // loadout
@@ -1133,10 +1935,12 @@ export class UI {
     ctx.beginPath();
     ctx.arc(c, c, R, 0, TAU);
     ctx.clip();
-    if (!M.ocean) {
+    const bio = MM_BIOME[m.biome] || MM_BIOME.tropical;
+    if (!M.ocean || M.biome !== bio) {
       M.ocean = ctx.createRadialGradient(c, c, 0, c, c, R);
-      M.ocean.addColorStop(0, '#1b6f96');
-      M.ocean.addColorStop(1, '#0b3656');
+      M.ocean.addColorStop(0, bio.sea[0]);
+      M.ocean.addColorStop(1, bio.sea[1]);
+      M.biome = bio;
     }
     ctx.fillStyle = M.ocean;
     ctx.fillRect(0, 0, W, W);
@@ -1146,12 +1950,7 @@ export class UI {
     const ix = mx(-px, -pz);
     const iy = my(-px, -pz);
     const ig = ctx.createRadialGradient(ix, iy, 0, ix, iy, wr * 1.06);
-    ig.addColorStop(0, '#2f8a45');
-    ig.addColorStop(0.72, '#4fae54');
-    ig.addColorStop(0.86, '#8fc862');
-    ig.addColorStop(0.91, '#f1d38e');
-    ig.addColorStop(0.955, 'rgba(241,211,142,.55)');
-    ig.addColorStop(1, 'rgba(241,211,142,0)');
+    for (const [o, col] of bio.land) ig.addColorStop(o, col);
     ctx.fillStyle = ig;
     ctx.beginPath();
     ctx.arc(ix, iy, wr * 1.06, 0, TAU);
@@ -1215,16 +2014,34 @@ export class UI {
         const x = mx(dx, dz);
         const y = my(dx, dz);
         const d = 5 * k;
+        const kind = shr[i].kind;
         ctx.globalAlpha = shr[i].used ? 0.35 : 1;
-        ctx.fillStyle = SURF;
+        ctx.fillStyle = SHRINE_MM[kind] || SURF;
         ctx.beginPath();
-        ctx.moveTo(x, y - d);
-        ctx.lineTo(x + d, y);
-        ctx.lineTo(x, y + d);
-        ctx.lineTo(x - d, y);
+        if (kind === 'moai') {
+          ctx.rect(x - d * 0.62, y - d, d * 1.24, d * 2); // stone head
+        } else if (kind === 'totem') {
+          ctx.moveTo(x, y - d * 1.1); // upward spike
+          ctx.lineTo(x + d, y + d * 0.8);
+          ctx.lineTo(x - d, y + d * 0.8);
+        } else if (kind === 'greed') {
+          ctx.arc(x, y, d * 0.95, 0, TAU); // coin
+        } else if (kind === 'pylon') {
+          for (let q = 0; q < 6; q++) ctx[q ? 'lineTo' : 'moveTo'](x + Math.cos(q * 1.0472) * d, y + Math.sin(q * 1.0472) * d); // hexagon
+        } else {
+          ctx.moveTo(x, y - d); // blessing: diamond
+          ctx.lineTo(x + d, y);
+          ctx.lineTo(x, y + d);
+          ctx.lineTo(x - d, y);
+        }
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
+        if (kind === 'moai' || kind === 'greed') {
+          ctx.fillStyle = INK;
+          ctx.fillRect(x - d * 0.42, y - d * 0.3, d * 0.3, d * 0.3);
+          ctx.fillRect(x + d * 0.12, y - d * 0.3, d * 0.3, d * 0.3);
+        }
       }
       ctx.globalAlpha = 1;
     }
@@ -1254,6 +2071,53 @@ export class UI {
         ctx.strokeRect(x - cs / 2, y - cs / 2, cs, cs);
       }
       ctx.globalAlpha = 1;
+    }
+
+    // portals: boss (purple/pink swirl) and exit (cyan/gold); off-range ones clamp to the rim
+    const po = m.portals;
+    if (po && po.length) {
+      for (let i = 0; i < po.length; i++) {
+        const p = po[i];
+        if (!p) continue;
+        const dx = p.x - px;
+        const dz = p.z - pz;
+        let x = mx(dx, dz);
+        let y = my(dx, dz);
+        if (dx * dx + dz * dz > (MM_RANGE - 6) * (MM_RANGE - 6)) {
+          const a = Math.atan2(y - c, x - c);
+          x = c + Math.cos(a) * (R - 8 * k);
+          y = c + Math.sin(a) * (R - 8 * k);
+        }
+        const exit = p.kind === 'exit';
+        const pr = 6.5 * k;
+        if (p.active) {
+          const pulse = REDUCED ? 1 : 1 + 0.3 * (0.5 + 0.5 * Math.sin(now / 180 + i));
+          ctx.fillStyle = exit ? 'rgba(26,227,255,.32)' : 'rgba(180,92,255,.36)';
+          ctx.beginPath();
+          ctx.arc(x, y, 11 * k * pulse, 0, TAU);
+          ctx.fill();
+        }
+        ctx.globalAlpha = p.active ? 1 : 0.6;
+        ctx.lineWidth = 2 * k;
+        ctx.strokeStyle = INK;
+        ctx.fillStyle = exit ? SURF : PURPLE;
+        ctx.beginPath();
+        ctx.ellipse(x, y, pr * 0.78, pr, 0, 0, TAU);
+        ctx.fill();
+        ctx.stroke();
+        ctx.lineWidth = 1.6 * k;
+        ctx.strokeStyle = exit ? VOLT : HOT;
+        ctx.beginPath();
+        ctx.ellipse(x, y, pr * 0.46, pr * 0.62, 0, 0, TAU);
+        ctx.stroke();
+        const a0 = REDUCED || !p.active ? 0 : now / 260;
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.3 * k;
+        ctx.beginPath();
+        ctx.arc(x, y, pr * 0.3, a0, a0 + 4.2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
     }
 
     // boss
@@ -1428,7 +2292,7 @@ export class UI {
     const r = this.r;
     const choices = Array.isArray(d.choices) ? d.choices : [];
     const title = String(d.title || 'LEVEL UP!');
-    r.lu.setAttribute('data-kind', /chest/i.test(title) ? 'chest' : /shrine|bless/i.test(title) ? 'shrine' : 'level');
+    r.lu.setAttribute('data-kind', /chest/i.test(title) ? 'chest' : /moai/i.test(title) ? 'moai' : /shrine|bless/i.test(title) ? 'shrine' : 'level');
     setOT(r.luTitle, title);
     r.luSub.textContent = '';
     r.luSub.append(el('span', null, choices.length > 1 ? 'PICK ONE' : 'TAKE IT'));
@@ -1454,7 +2318,7 @@ export class UI {
     wrap.classList.remove('vb-has-pick');
     this._cardEls = choices.map((c, i) => {
       const rar = RARITY[c.rarity] ? c.rarity : 'common';
-      const kind = c.kind === 'tome' ? 'TOME' : c.kind === 'weapon' ? 'WEAPON' : String(c.kind || '').toUpperCase();
+      const kind = KIND_LABEL[c.kind] || String(c.kind || '').toUpperCase();
       const b = el('button', 'vb-card vb-r-' + rar);
       b.type = 'button';
       b.style.setProperty('--i', i);
@@ -1464,7 +2328,7 @@ export class UI {
       const band = el('span', 'vb-card-band');
       band.append(el('span', 'vb-card-key', String(i + 1)), el('span', 'vb-card-rar', RARITY[rar]), el('span', 'vb-card-kind', kind));
       const ic = el('span', 'vb-card-ic');
-      ic.append(burstNode(), iconNode(c.id));
+      ic.append(burstNode(), iconNode(iconKey(c.id) !== 'star' ? c.id : c.kind === 'perk' ? 'perk' : c.kind === 'stat' ? 'moai' : c.id));
       const isNew = /new/i.test(c.levelText || '');
       const lv = el('span', 'vb-card-lv' + (isNew ? ' vb-new' : ''), c.levelText || '');
       const dl = el('span', 'vb-card-desc');
@@ -1515,12 +2379,15 @@ export class UI {
     r.pauseSum.textContent = '';
     r.pauseBuild.textContent = '';
     if (s) {
-      [
+      const sums = [
         ['TIME', mmss(s.time)],
         ['SCORE', commas(s.score)],
         ['KILLS', commas(s.kills)],
         ['LEVEL', String(s.level | 0)],
-      ].forEach(([k, v]) => {
+      ];
+      if (s.island) sums.unshift(['ISLAND', (s.island.n | 0 || 1) + '/5']);
+      r.pauseSum.style.setProperty('--n', sums.length);
+      sums.forEach(([k, v]) => {
         const c = el('div', 'vb-psum');
         c.append(el('span', 'k', k), el('b', null, v));
         r.pauseSum.append(c);
@@ -1580,9 +2447,24 @@ export class UI {
     if (this._lu.open) this.hideLevelUp();
     if (this._pauseOpen) this.hidePause();
     this.setPrompt(null);
+    this.hideBossIntro();
+    const Q = this._qp;
+    clearTimeout(Q.timer);
+    Q.queue.length = 0;
+    Q.cur = Q.el = null;
+    r.qpop.textContent = '';
 
     r.ovMode.textContent = d.daily != null ? 'DAILY #' + d.daily : 'RANDOM ISLAND';
     r.ovRank.textContent = d.rank || 'Island Tourist';
+    const vic = !!d.victory;
+    r.over.classList.toggle('vb-victory', vic);
+    r.over.setAttribute('aria-label', vic ? 'Victory' : 'Game over');
+    const head = String(d.headline || (vic ? 'ISLAND CLEARED!' : 'BONKED.')).toUpperCase();
+    setOT(r.ovHead, head);
+    r.ovHead.classList.toggle('vb-long', head.length > 9);
+    r.ovHead.classList.toggle('vb-xlong', head.length > 15);
+    this._renderOverIslands(d);
+    const hasRewards = this._renderRewards(d.unlocks, d.questsDone);
     setOT(r.ovScore, '0');
     r.ovBest.classList.remove('vb-on');
 
@@ -1621,7 +2503,7 @@ export class UI {
     // damage per weapon
     const all = (Array.isArray(d.damageByWeapon) ? d.damageByWeapon : []).filter((w) => w && w.dmg > 0).sort((a, b) => b.dmg - a.dmg);
     const total = all.reduce((a, w) => a + w.dmg, 0) || 1;
-    const list = all.slice(0, 6);
+    const list = all.slice(0, hasRewards ? 4 : 6);
     const max = list.length ? list[0].dmg : 1;
     r.ovDmg.textContent = '';
     if (!list.length) r.ovDmg.append(el('div', 'vb-empty', 'No damage dealt. Pacifist run?'));
@@ -1642,7 +2524,7 @@ export class UI {
       r.ovDmg.append(row);
     });
 
-    this._renderBests(r.ovBests, d.bests, { score: d.score, time: d.time });
+    this._renderBests(r.ovBests, d.bests, { score: d.score, time: d.time }, hasRewards ? 3 : 5);
 
     r.ovShare.classList.remove('vb-on');
     r.ovShareTa.value = d.shareText || '';
@@ -1653,6 +2535,68 @@ export class UI {
     this._show(r.over);
     r.over.scrollTop = 0;
     this._countUp(Math.round(d.score || 0), !!d.isBest);
+  }
+
+  _renderOverIslands(d) {
+    const box = this.r.ovIsl;
+    box.textContent = '';
+    if (d.islandsCleared == null && d.islandReached == null) {
+      box.classList.remove('vb-on');
+      return;
+    }
+    box.classList.add('vb-on');
+    const cl = Math.max(0, Math.min(5, d.islandsCleared | 0));
+    const re = Math.max(cl, Math.min(5, d.islandReached | 0));
+    const ol = el('ol', 'vb-ovi-list');
+    for (let i = 1; i <= 5; i++) {
+      const li = el('li', i <= cl ? 'vb-cleared' : i === re ? 'vb-reached' : 'vb-far');
+      li.append(islandMedal(BIOME_ORDER[i - 1], null, i <= cl ? 'check' : null));
+      ol.append(li);
+    }
+    const txt = el('div', 'vb-ovi-txt');
+    txt.append(el('b', null, cl + '/5'), el('span', null, cl === 1 ? 'ISLAND CLEARED' : 'ISLANDS CLEARED'));
+    if (re > cl) txt.append(el('small', null, 'FELL ON ISLAND ' + re));
+    box.append(ol, txt);
+  }
+
+  _renderRewards(unlocks, quests) {
+    const box = this.r.ovRewards;
+    box.textContent = '';
+    const U = Array.isArray(unlocks) ? unlocks.filter(Boolean) : [];
+    const Q = Array.isArray(quests) ? quests.filter(Boolean) : [];
+    box.classList.toggle('vb-on', !!(U.length || Q.length));
+    const head = (icon, text) => {
+      const h = el('div', 'vb-card-head vb-rw-head');
+      const hi = el('span', 'vb-head-ic');
+      hi.append(iconNode(icon));
+      h.append(hi, document.createTextNode(text));
+      return h;
+    };
+    if (U.length) {
+      const g = el('div', 'vb-rw-grid');
+      U.slice(0, 8).forEach((u, i) => {
+        const c = el('div', 'vb-rw');
+        c.style.setProperty('--i', i);
+        const ic = el('span', 'vb-rw-ic');
+        ic.append(burstNode(), iconNode(rewardIcon(u)));
+        const t = el('span', 'vb-rw-t');
+        t.append(el('small', null, KIND_LABEL[u.kind] || String(u.kind || 'UNLOCK').toUpperCase()), el('b', null, String(u.name || u.id)));
+        c.append(ic, t);
+        g.append(c);
+      });
+      box.append(head('star', U.length > 1 ? 'NEW UNLOCKS!' : 'NEW UNLOCK!'), g);
+    }
+    if (Q.length) {
+      const ul = el('ul', 'vb-rw-qs');
+      Q.slice(0, 10).forEach((q, i) => {
+        const li = el('li');
+        li.style.setProperty('--i', i);
+        li.append(iconNode('check'), el('span', null, String(typeof q === 'string' ? q : q.name || q.id || '')));
+        ul.append(li);
+      });
+      box.append(head('trophy', 'QUESTS COMPLETED'), ul);
+    }
+    return !!(U.length || Q.length);
   }
 
   hideGameOver() {
@@ -1732,7 +2676,7 @@ export class UI {
   /* --------------------------------------------------------------- state */
 
   get isModalOpen() {
-    return !!(this._lu.open || this._pauseOpen || this._over.open);
+    return !!(this._lu.open || this._pauseOpen || this._over.open || this._qsOpen);
   }
 }
 

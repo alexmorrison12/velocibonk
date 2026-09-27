@@ -334,6 +334,27 @@
   white-space: nowrap;
   transform: skewX(-8deg);
 }
+.vb-timer.vb-urgent { color: var(--volt); animation: vb-throb 1s ease-in-out infinite; }
+.vb-timer.vb-crit { color: var(--sun); animation-duration: 0.5s; }
+.vb-timer.vb-zero { color: var(--hot); }
+.vb-isl {
+  display: none;
+  align-items: center;
+  gap: 0.5em;
+  margin-bottom: 0.25em;
+  padding: 0.22em 0.85em 0.22em 0.6em;
+  font-weight: 700;
+  font-size: 0.74em;
+  letter-spacing: 0.18em;
+  white-space: nowrap;
+  color: var(--paper);
+  background: rgba(20, 15, 46, 0.78);
+  border-radius: 0.25em;
+  transform: skewX(-12deg);
+  box-shadow: 0.16em 0.18em 0 rgba(0, 0, 0, 0.35);
+}
+.vb-isl.vb-on { display: flex; }
+.vb-isl-dot { flex: none; width: 0.8em; height: 0.8em; background: var(--bc); border: 0.13em solid var(--ink); border-radius: 50%; box-shadow: 0 0 0.6em var(--bc); }
 .vb-score {
   display: flex;
   align-items: baseline;
@@ -363,6 +384,41 @@
 .vb-phase.vb-empty { display: none; }
 .vb-phase.vb-soon { color: var(--ink); background: var(--sun); animation: vb-throb 0.5s ease-in-out infinite; }
 .vb-phase.vb-danger { color: var(--paper); background: var(--hot); text-shadow: 0.06em 0.08em 0 var(--ink); box-shadow: 0.16em 0.18em 0 var(--ink); animation: vb-throb 0.7s ease-in-out infinite; }
+.vb-phase.vb-swarm {
+  font-size: 1.05em;
+  padding: 0.3em 1.15em 0.32em;
+  background: linear-gradient(90deg, #b3083b, var(--hot) 25%, var(--hot) 75%, #b3083b);
+  box-shadow: 0 0 0 0.14em var(--ink), 0 0 1.4em rgba(255, 61, 139, 0.75), 0.24em 0.28em 0 0.14em var(--ink);
+  animation: vb-throb 0.55s ease-in-out infinite;
+}
+.vb-swarmglow { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, rgba(120, 40, 200, 0) 52%, rgba(120, 40, 200, 0.42) 82%, rgba(255, 61, 139, 0.6) 100%); }
+.vb-swarming .vb-swarmglow { opacity: 1; animation: vb-swarm 1.6s ease-in-out infinite; }
+.vb-trial {
+  display: none;
+  flex-direction: column;
+  gap: 0.28em;
+  min-width: 17em;
+  margin-top: 0.5em;
+  padding: 0.32em 0.7em 0.42em 0.6em;
+  background: rgba(20, 15, 46, 0.86);
+  border: 0.14em solid var(--ink);
+  border-left: 0.38em solid var(--sun);
+  border-radius: 0.3em;
+  transform: skewX(-12deg);
+  box-shadow: 0.18em 0.2em 0 rgba(0, 0, 0, 0.4);
+}
+.vb-trial.vb-on { display: flex; animation: vb-boss-in 0.4s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.vb-trial-top { display: flex; align-items: center; gap: 0.55em; white-space: nowrap; font-weight: 700; font-size: 0.86em; letter-spacing: 0.1em; }
+.vb-trial-k { display: inline-flex; align-items: center; gap: 0.25em; padding: 0.1em 0.45em 0.06em 0.25em; font-family: var(--f-disp); font-weight: 400; letter-spacing: 0.06em; color: var(--ink); background: var(--sun); border-radius: 0.2em; }
+.vb-trial-k svg { width: 1.25em; height: 1.25em; margin: -0.25em 0; }
+.vb-trial-l { color: var(--paper); }
+.vb-trial-top b { font-family: var(--f-disp); font-weight: 400; font-size: 1.15em; line-height: 1; color: var(--volt); font-variant-numeric: tabular-nums; }
+.vb-trial-t { margin-left: auto; padding-left: 0.4em; font-family: var(--f-disp); font-size: 1.12em; line-height: 1; color: var(--paper); font-variant-numeric: tabular-nums; }
+.vb-trial-bar { height: 0.42em; overflow: hidden; background: rgba(255, 246, 229, 0.12); border-radius: 0.2em; }
+.vb-trial-bar i { display: block; height: 100%; transform-origin: 0 50%; transform: scaleX(0); background: linear-gradient(90deg, var(--sun), var(--volt)); transition: transform 0.2s ease-out; }
+.vb-trial.vb-hurry .vb-trial-t { color: var(--hot); animation: vb-throb 0.5s ease-in-out infinite; }
+.vb-trial.vb-won { border-left-color: var(--lime); }
+.vb-trial.vb-won .vb-trial-bar i { background: var(--lime); }
 .vb-boss { display: none; flex-direction: column; align-items: center; width: 38em; max-width: 44vw; margin-top: 0.6em; }
 .vb-boss.vb-on { display: flex; animation: vb-boss-in 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
 .vb-boss-name {
@@ -380,6 +436,10 @@
   transform: skewX(-8deg);
 }
 .vb-boss-ic { flex: none; width: 1.25em; height: 1.25em; }
+.vb-boss-rage { display: none; margin-left: 0.35em; padding: 0.14em 0.45em 0.08em; font-size: 0.6em; letter-spacing: 0.12em; color: var(--volt); background: var(--hot); border: 0.14em solid var(--ink); border-radius: 0.25em; box-shadow: 0.12em 0.14em 0 var(--ink); }
+.vb-boss.vb-enraged .vb-boss-rage { display: inline-block; animation: vb-shake 0.14s linear infinite; }
+.vb-boss.vb-enraged .vb-boss-bar { animation: vb-rage 0.6s ease-in-out infinite; }
+.vb-boss.vb-enraged .vb-boss-fill { background: linear-gradient(180deg, #ffb37a 0 30%, #ff4a1f 30% 78%, #b3240b 78%); }
 .vb-boss-ic svg { width: 100%; height: 100%; }
 .vb-boss-bar {
   position: relative;
@@ -695,12 +755,108 @@
 .vb-toast-n:empty { display: none; }
 .vb-toast.vb-out { animation: vb-toast-out 0.24s ease-in forwards; }
 
+/* ---- quest complete banner (slides in under the HP/XP bars; never blocks input) ---- */
+.vb-qpop { position: absolute; left: calc(var(--hu) * 1.6); top: calc(var(--hu) * 7.4); z-index: 31; font-size: calc(var(--hu) * 1.1); pointer-events: none; }
+.vb-qp {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  max-width: min(29em, calc(100vw - 32px));
+  padding: 0.5em 1.4em 0.6em 0.55em;
+  overflow: hidden;
+  background: linear-gradient(100deg, #4a3500 0%, #2a1f5c 42%, var(--ink) 100%);
+  border: 0.18em solid var(--ink);
+  border-left: 0.5em solid var(--volt);
+  border-radius: 0.4em;
+  transform: skewX(-10deg);
+  box-shadow: 0 0 0 0.14em var(--volt), 0.3em 0.34em 0 0.14em var(--ink);
+  animation: vb-qp-in 0.55s cubic-bezier(0.2, 1.35, 0.4, 1) both;
+}
+.vb-qp.vb-out { animation: vb-qp-out 0.32s ease-in forwards; }
+.vb-qp-ic { position: relative; flex: none; display: grid; place-items: center; width: 3.5em; height: 3.5em; transform: skewX(10deg); }
+.vb-qp-ic .vb-burst { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--sun); animation: vb-spin 6s linear infinite; }
+.vb-qp-ic > svg:not(.vb-burst) { position: relative; width: 66%; height: 66%; animation: vb-stamp 0.5s 0.15s cubic-bezier(0.2, 1.6, 0.35, 1) both; }
+.vb-qp-body { display: flex; flex-direction: column; gap: 0.28em; min-width: 0; }
+.vb-qp-k { display: flex; flex-direction: column; }
+.vb-qp-k span { font-weight: 700; font-size: 0.7em; letter-spacing: 0.28em; color: var(--volt); }
+.vb-qp-name { font-family: var(--f-disp); font-weight: 400; font-size: 1.55em; line-height: 1.02; color: var(--paper); text-shadow: 0.06em 0.08em 0 var(--ink); overflow-wrap: anywhere; }
+.vb-qp-rw { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3em 0.4em; font-size: 0.85em; }
+.vb-qp-rw .k { font-weight: 700; font-size: 0.8em; letter-spacing: 0.16em; color: var(--lav); }
+.vb-qp-chip { display: inline-flex; align-items: center; gap: 0.3em; padding: 0.1em 0.55em 0.1em 0.18em; background: #3b2e7e; border: 0.12em solid var(--ink); border-radius: 0.3em; }
+.vb-qp-chip svg { flex: none; width: 1.55em; height: 1.55em; }
+.vb-qp-chip b { font-family: var(--f-disp); font-weight: 400; font-size: 1.05em; color: var(--lime); }
+.vb-qp-shine { position: absolute; inset: 0; background: linear-gradient(100deg, transparent 35%, rgba(255, 255, 255, 0.4) 47%, transparent 60%); transform: translateX(-120%); animation: vb-qp-shine 1.1s 0.4s ease-out both; pointer-events: none; }
+
+/* ---- island arrival card (portal warps / island start) ---- */
+.vb-isle { --bc: #66BD48; --bd: #15452B; position: absolute; inset: 0; z-index: 24; display: none; align-items: center; justify-content: center; overflow: hidden; font-size: var(--mu); pointer-events: none; }
+.vb-isle.vb-on { display: flex; animation: vb-in 0.25s ease-out both; }
+.vb-isle.vb-leaving { animation: vb-out 0.42s ease-in both; }
+.vb-isle-bg { position: absolute; inset: 0; background: linear-gradient(180deg, var(--bd) 0%, #140f2e 100%); opacity: 0.95; }
+.vb-isle-bg::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 58% 52% at 50% 47%, var(--bc), rgba(0, 0, 0, 0) 72%); opacity: 0.38; }
+.vb-isle-bg::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(-62deg, rgba(255, 255, 255, 0.045) 0 1.6em, rgba(255, 255, 255, 0) 1.6em 3.4em); }
+.vb-isle-warp {
+  position: absolute;
+  inset: -30%;
+  opacity: 0.4;
+  background: repeating-conic-gradient(from 2deg at 50% 50%, rgba(255, 246, 229, 0) 0deg 4.5deg, rgba(255, 246, 229, 0.55) 4.5deg 4.9deg, rgba(255, 246, 229, 0) 4.9deg 10deg);
+  -webkit-mask-image: radial-gradient(closest-side, transparent 34%, #000 92%);
+  mask-image: radial-gradient(closest-side, transparent 34%, #000 92%);
+  animation: vb-lines 0.3s steps(3) infinite;
+}
+.vb-isle-in { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.7em; max-width: 100%; padding: 0 16px; text-align: center; }
+.vb-isle-step { padding: 0.42em 1em 0.4em 1.3em; font-weight: 700; font-size: 1em; letter-spacing: 0.34em; color: var(--ink); background: var(--volt); border: 0.15em solid var(--ink); border-radius: 0.3em; transform: skewX(-12deg); box-shadow: 0.2em 0.24em 0 var(--ink); animation: vb-drop 0.45s 0.05s cubic-bezier(0.2, 1.5, 0.4, 1) both; }
+.vb-isle-md {
+  display: grid;
+  place-items: center;
+  width: clamp(84px, 15vh, 150px);
+  height: clamp(84px, 15vh, 150px);
+  background: radial-gradient(circle at 50% 28%, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 62%), var(--bd);
+  border: 0.25em solid var(--ink);
+  border-radius: 50%;
+  box-shadow: 0 0 0 0.25em var(--bc), 0.35em 0.4em 0 0.25em var(--ink), 0 0 3.5em var(--bc);
+  animation: vb-stamp 0.5s 0.12s cubic-bezier(0.2, 1.6, 0.35, 1) both;
+}
+.vb-isle-md svg { width: 78%; height: 78%; }
+.vb-isle-name { font-family: var(--f-disp); font-weight: 400; font-size: clamp(46px, min(14vh, 10.5vw), 176px); line-height: 0.95; white-space: nowrap; color: var(--bc); --otw: 0.14em; transform: skewX(-10deg); animation: vb-slam 0.55s 0.2s cubic-bezier(0.2, 1.6, 0.35, 1) both; }
+.vb-isle-name.vb-long { font-size: clamp(40px, min(12vh, 8.4vw), 150px); }
+.vb-isle-sub { max-width: 34em; font-style: italic; font-weight: 700; font-size: 1.3em; line-height: 1.25; color: var(--paper); text-shadow: 0.08em 0.1em 0 var(--ink); animation: vb-rise 0.4s 0.42s ease-out both; }
+.vb-isle-caps { display: flex; align-items: center; gap: 0.7em; padding: 0.42em 1em 0.4em; background: var(--ink); border: 0.15em solid var(--bc); border-radius: 0.35em; transform: skewX(-10deg); box-shadow: 0.2em 0.24em 0 rgba(0, 0, 0, 0.45); animation: vb-rise 0.4s 0.55s ease-out both; }
+.vb-isle-caps[hidden],
+.vb-isle-sub[hidden] { display: none; }
+.vb-isle-caps .k { font-weight: 700; font-size: 0.7em; letter-spacing: 0.22em; color: var(--lav); }
+.vb-isle-caps span:last-child { font-family: var(--f-disp); font-size: 1.15em; letter-spacing: 0.04em; color: var(--volt); }
+.vb-isle-dots { display: flex; gap: 0.75em; margin-top: 0.3em; padding: 0; list-style: none; animation: vb-rise 0.4s 0.65s ease-out both; }
+.vb-isle-dots li { width: 0.95em; height: 0.95em; background: rgba(255, 246, 229, 0.16); border: 0.14em solid var(--ink); transform: rotate(45deg); }
+.vb-isle-dots li.vb-past { background: var(--dc); }
+.vb-isle-dots li.vb-cur { background: var(--dc); box-shadow: 0 0 0 0.18em var(--paper); animation: vb-throb 0.8s ease-in-out infinite; }
+
+/* ---- boss intro: letterbox + name card (sits under the HUD so HP stays readable) ---- */
+.vb-bi { position: absolute; inset: 0; display: none; overflow: hidden; font-size: var(--mu); pointer-events: none; }
+.vb-bi.vb-on { display: block; }
+.vb-bi-bar { position: absolute; left: 0; right: 0; height: 11vh; background: #07050f; animation: vb-bar-t 0.4s cubic-bezier(0.2, 1, 0.3, 1) both; }
+.vb-bi-t { top: 0; box-shadow: 0 0.25em 0 var(--hot); }
+.vb-bi-b { bottom: 0; box-shadow: 0 -0.25em 0 var(--hot); animation-name: vb-bar-b; }
+.vb-bi.vb-out .vb-bi-t { animation: vb-bar-t-out 0.42s ease-in forwards; }
+.vb-bi.vb-out .vb-bi-b { animation: vb-bar-b-out 0.42s ease-in forwards; }
+.vb-bi-card { position: absolute; left: 0; right: 0; top: 55%; z-index: 0; display: flex; flex-direction: column; align-items: center; gap: 0.25em; padding: 0.8em 16px 1em; animation: vb-bi-in 0.55s 0.12s cubic-bezier(0.2, 1.25, 0.35, 1) both; }
+.vb-bi.vb-out .vb-bi-card { animation: vb-bi-out 0.42s ease-in forwards; }
+.vb-bi-stripe { position: absolute; left: -5%; right: -5%; top: 0; bottom: 0; z-index: -1; background: linear-gradient(90deg, rgba(20, 15, 46, 0), rgba(20, 15, 46, 0.9) 16%, rgba(20, 15, 46, 0.9) 84%, rgba(20, 15, 46, 0)); border-top: 0.3em solid var(--hot); border-bottom: 0.3em solid var(--hot); transform: skewY(-2deg); }
+.vb-bi-row { display: flex; align-items: center; gap: 0.55em; }
+.vb-bi-ic { flex: none; width: 1.9em; height: 1.9em; }
+.vb-bi-ic svg { width: 100%; height: 100%; }
+.vb-bi-title { font-weight: 700; font-size: 1.05em; letter-spacing: 0.32em; color: var(--paper); text-shadow: 0.08em 0.1em 0 var(--ink); }
+.vb-bi-name { font-family: var(--f-disp); font-size: clamp(54px, min(15vh, 11.5vw), 190px); line-height: 0.95; white-space: nowrap; color: var(--hot); --otw: 0.14em; transform: skewX(-10deg); animation: vb-slam 0.6s 0.28s cubic-bezier(0.2, 1.6, 0.35, 1) both; }
+.vb-bi-name.vb-long { font-size: clamp(42px, min(11.5vh, 8.2vw), 150px); }
+.vb-bi-warn { margin-top: 0.2em; padding: 0.3em 0.9em 0.26em 1.2em; font-family: var(--f-disp); font-size: 1em; letter-spacing: 0.3em; color: var(--ink); background: repeating-linear-gradient(-45deg, var(--volt) 0 0.6em, #f0ae00 0.6em 1.2em); border: 0.14em solid var(--ink); transform: skewX(-12deg); box-shadow: 0.18em 0.2em 0 var(--ink); }
+
 /* =====================================================================
    LEVEL UP / CHEST / SHRINE
    ===================================================================== */
 .vb-lu { --lc: var(--sun); }
 .vb-lu[data-kind="chest"] { --lc: var(--volt); }
 .vb-lu[data-kind="shrine"] { --lc: var(--surf); }
+.vb-lu[data-kind="moai"] { --lc: #d9cff7; }
 .vb-lu-rays {
   position: fixed;
   left: 50%;
@@ -803,6 +959,7 @@
   overflow-wrap: anywhere;
 }
 .vb-card-lv {
+  white-space: nowrap;
   margin-top: 0.5em;
   padding: 0.22em 0.75em 0.2em;
   font-weight: 700;
@@ -836,7 +993,7 @@
    ===================================================================== */
 .vb-pause { z-index: 11; }
 .vb-pause-panel { margin: auto; width: min(31em, calc(100vw - 32px)); animation: vb-pop-in 0.3s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
-.vb-psums { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.45em; margin-bottom: 0.8em; }
+.vb-psums { display: grid; grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); gap: 0.45em; margin-bottom: 0.8em; }
 .vb-psum { display: flex; flex-direction: column; align-items: center; padding: 0.35em 0.2em 0.3em; background: rgba(20, 15, 46, 0.65); border-radius: 0.3em; transform: skewX(-8deg); }
 .vb-psum .k { font-size: 0.64em; letter-spacing: 0.2em; color: var(--lav); }
 .vb-psum b { font-family: var(--f-disp); font-weight: 400; font-size: 1.25em; font-variant-numeric: tabular-nums; }
@@ -926,7 +1083,18 @@
 /* =====================================================================
    TITLE
    ===================================================================== */
-.vb-title { z-index: 20; pointer-events: auto; overflow-x: hidden; overflow-y: auto; font-size: var(--mu); }
+.vb-title {
+  /* x of the 3D raptor on the title camera (main.js updateTitle: fov 58, look target offset 2.6 m left of the raptor).
+     Override --hero-x if the title camera changes. */
+  --hero-x: calc(50vw + 29.7vh);
+  --tpad: clamp(18px, 4.6vh, 64px);
+  --xpad: clamp(16px, 4.6vw, 120px);
+  z-index: 20;
+  pointer-events: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  font-size: var(--mu);
+}
 .vb-title.vb-on { display: block; }
 .vb-title-tint {
   position: fixed;
@@ -948,15 +1116,14 @@
 .vb-title-grid {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(270px, 24em);
-  align-items: center;
-  gap: clamp(20px, 4vw, 90px);
+  grid-template-columns: minmax(0, 1fr) clamp(290px, 23.5em, 30vw);
+  grid-template-rows: auto minmax(0, 1fr);
+  align-items: start;
+  column-gap: clamp(20px, 3vw, 72px);
   min-height: 100%;
-  max-width: 1760px;
-  margin: 0 auto;
-  padding: clamp(20px, 5vh, 70px) clamp(16px, 5vw, 110px) 4.8em;
+  padding: var(--tpad) var(--xpad) 4.2em;
 }
-.vb-title-main { container-type: inline-size; display: flex; flex-direction: column; align-items: flex-start; gap: 1.25em; min-width: 0; }
+.vb-title-main { grid-column: 1; grid-row: 1 / span 2; align-self: center; container-type: inline-size; display: flex; flex-direction: column; align-items: flex-start; gap: 1.05em; min-width: 0; }
 .vb-logo-wrap { position: relative; z-index: 0; max-width: 100%; }
 .vb-logo {
   display: flex;
@@ -1027,8 +1194,11 @@
 .vb-menu > .vb-btn:nth-child(2) { margin-left: 1em; animation-delay: 0.62s; }
 .vb-menu-row { display: flex; flex-wrap: wrap; gap: 0.85em; margin-left: 2em; animation: vb-slide-in 0.45s 0.69s cubic-bezier(0.2, 1.3, 0.4, 1) both; }
 .vb-btn-xl { min-width: min(100%, 16.5em); }
-.vb-side { min-width: 0; }
-.vb-bests-card { padding: 1.3em 1.5em 1.2em; animation: vb-rise 0.5s 0.6s ease-out both; }
+.vb-side { grid-column: 2; grid-row: 1; min-width: 0; }
+/* top-right and height-limited so the raptor (lower middle/right) stays visible; the lists scroll */
+.vb-bests-card { display: flex; flex-direction: column; max-height: calc(47vh - var(--tpad)); min-height: 12em; padding: 1.2em 1.4em 1.1em; animation: vb-rise 0.5s 0.6s ease-out both; }
+.vb-bests-card .vb-lb-text .vb-best-meta { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.vb-bests-card .vb-bests { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; padding-right: 0.25em; scrollbar-width: thin; scrollbar-color: #4a3aa0 transparent; }
 .vb-bests { display: flex; flex-direction: column; gap: 0.45em; padding: 0; list-style: none; }
 .vb-best {
   display: grid;
@@ -1047,8 +1217,193 @@
 .vb-best-meta { font-size: 0.72em; letter-spacing: 0.08em; color: var(--lav); overflow-wrap: anywhere; }
 .vb-best.vb-me { background: rgba(255, 61, 139, 0.18); border-left-color: var(--hot); }
 .vb-best.vb-me .vb-best-score::after { content: " ← YOU"; font-family: var(--f-ui); font-weight: 700; font-size: 0.55em; letter-spacing: 0.14em; color: var(--hot); }
-.vb-daily-note { margin-top: 0.9em; font-size: 0.72em; letter-spacing: 0.12em; text-transform: uppercase; color: var(--lav); }
-.vb-footer { position: relative; margin-top: -3.4em; padding: 0 16px 1.2em; font-size: 0.7em; letter-spacing: 0.14em; text-align: center; text-transform: uppercase; color: rgba(255, 246, 229, 0.62); }
+.vb-daily-note { flex: none; margin-top: 0.8em; font-size: 0.72em; letter-spacing: 0.12em; text-transform: uppercase; color: var(--lav); }
+.vb-footer { position: absolute; left: var(--xpad); bottom: 0; max-width: 34em; margin: 0; padding: 0 0 1.3em; font-size: 0.66em; letter-spacing: 0.14em; line-height: 1.4; text-align: left; text-transform: uppercase; color: rgba(255, 246, 229, 0.55); }
+
+/* ---- archipelago strip (title) ---- */
+.vb-arch { display: flex; flex-direction: column; gap: 0.5em; width: min(100%, 25em); animation: vb-rise 0.45s 0.5s ease-out both; }
+.vb-arch-head { display: flex; align-items: baseline; gap: 0.8em; font-weight: 700; font-size: 0.7em; letter-spacing: 0.26em; color: var(--lav); }
+.vb-arch-head b { padding: 0.15em 0.5em; letter-spacing: 0.14em; color: var(--ink); background: var(--volt); border-radius: 0.2em; transform: skewX(-12deg); }
+.vb-arch-list { --D: 3em; --gap: 0.25em; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--gap); padding: 0.35em 0 0; list-style: none; }
+.vb-arch-i { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.32em; text-align: center; }
+.vb-arch-i + .vb-arch-i::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--D) / 2 - 0.1em);
+  left: calc(-50% - var(--gap) + var(--D) / 2 + 0.3em);
+  right: calc(50% + var(--D) / 2 + 0.3em);
+  border-top: 0.22em dotted var(--volt);
+}
+.vb-arch-i.vb-locked::before { border-top-color: rgba(185, 176, 230, 0.35); }
+.vb-arch-i .vb-md { width: var(--D); height: var(--D); }
+.vb-arch-name { max-width: 100%; font-weight: 700; font-size: 0.58em; line-height: 1.15; letter-spacing: 0.06em; color: var(--paper); text-shadow: 0.08em 0.1em 0 var(--ink); text-wrap: balance; }
+.vb-arch-best { margin-top: -0.1em; font-family: var(--f-disp); font-size: 0.72em; line-height: 1; color: var(--volt); text-shadow: 0.06em 0.08em 0 var(--ink); }
+.vb-arch-i.vb-locked .vb-arch-name { color: var(--lav); opacity: 0.75; }
+.vb-arch-i.vb-next .vb-md::after { content: ""; position: absolute; inset: -0.5em; border: 0.16em solid var(--bc); border-radius: 50%; animation: vb-ring 1.3s ease-out infinite; }
+
+/* shared island medallion */
+.vb-md {
+  --bc: #66BD48;
+  --bd: #15452B;
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 3em;
+  height: 3em;
+  background: radial-gradient(circle at 50% 28%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 62%), var(--bd);
+  border: 0.16em solid var(--ink);
+  border-radius: 50%;
+  box-shadow: 0 0 0 0.15em var(--bc), 0.16em 0.2em 0 0.15em var(--ink);
+}
+.vb-md > svg { width: 80%; height: 80%; }
+.vb-md-n {
+  position: absolute;
+  left: -0.42em;
+  top: -0.38em;
+  display: grid;
+  place-items: center;
+  min-width: 1.45em;
+  height: 1.45em;
+  font-family: var(--f-disp);
+  font-size: 0.66em;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--bc);
+  border: 0.14em solid var(--ink);
+  border-radius: 50%;
+}
+.vb-md-st { position: absolute; right: -0.42em; bottom: -0.34em; width: 1.3em; height: 1.3em; }
+.vb-md-st svg { width: 100%; height: 100%; }
+.vb-locked .vb-md,
+.vb-far .vb-md { background: #211a45; box-shadow: 0 0 0 0.15em #4a3f7a, 0.16em 0.2em 0 0.15em var(--ink); }
+.vb-locked .vb-md > svg:first-child,
+.vb-far .vb-md > svg:first-child { filter: grayscale(1) brightness(0.5); }
+.vb-locked .vb-md-n { background: #4a3f7a; color: var(--lav); }
+.vb-cleared .vb-md { box-shadow: 0 0 0 0.15em var(--volt), 0.16em 0.2em 0 0.15em var(--ink); }
+
+/* ---- QUESTS button ---- */
+.vb-btn-quests .vb-btn-in { gap: 0.4em; padding-left: 0.75em; padding-right: 0.8em; }
+.vb-btn-ic { flex: none; width: 1.4em; height: 1.4em; margin: -0.25em 0; }
+.vb-btn-ic svg { width: 100%; height: 100%; }
+.vb-badge { margin-left: 0.2em; padding: 0.2em 0.42em 0.16em; font-size: 0.8em; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; color: var(--volt); background: var(--ink); border-radius: 0.3em; text-shadow: none; }
+.vb-btn-quests.vb-all .vb-badge { color: var(--lime); }
+
+/* ---- character selector: sits under the 3D raptor ---- */
+.vb-chars {
+  --cc: var(--surf);
+  position: absolute;
+  left: min(var(--hero-x), calc(100% - 16em));
+  bottom: clamp(10px, 2.8vh, 38px);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5em;
+  width: min(31em, calc(100vw - 32px));
+  translate: -50% 0;
+  animation: vb-rise 0.5s 0.8s ease-out both;
+}
+.vb-chars[hidden] { display: none; }
+.vb-chars[data-char="rex"] { --cc: #3fe0cf; }
+.vb-chars[data-char="zappy"] { --cc: #5cb6ff; }
+.vb-chars[data-char="nana"] { --cc: #ffe14d; }
+.vb-chars[data-char="blaze"] { --cc: #ff7a4a; }
+.vb-chars[data-char="tank"] { --cc: #b7cc4f; }
+.vb-chars[data-char="goldie"] { --cc: #ffc21a; }
+.vb-chars-label { display: flex; align-items: center; gap: 0.7em; padding: 0.26em 0.8em 0.24em; font-weight: 700; font-size: 0.7em; letter-spacing: 0.26em; color: var(--paper); background: var(--ink); border-radius: 0.25em; transform: skewX(-12deg); box-shadow: 0.18em 0.2em 0 rgba(0, 0, 0, 0.35); }
+.vb-chars-keys { display: flex; gap: 0.25em; letter-spacing: 0; }
+.vb-chars-keys kbd { min-width: 1.6em; height: 1.6em; font-size: 0.95em; }
+.vb-char-row { display: flex; align-items: center; gap: 0.55em; width: 100%; }
+.vb-char-arrow {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.4em;
+  height: 4.6em;
+  margin: 0;
+  padding: 0;
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--volt) 0 22%, #f6c700 22%);
+  border: 0.16em solid var(--ink);
+  border-radius: 0.4em;
+  box-shadow: 0.2em 0.24em 0 var(--ink);
+  transform: skewX(-10deg);
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: transform 0.12s cubic-bezier(0.3, 1.7, 0.5, 1), box-shadow 0.12s;
+}
+.vb-char-arrow svg { width: 1.5em; height: 1.5em; fill: currentColor; }
+.vb-char-arrow:hover { transform: skewX(-10deg) translateY(-0.14em); box-shadow: 0.28em 0.36em 0 var(--ink); }
+.vb-char-arrow:active { transform: skewX(-10deg) translateY(0.12em); box-shadow: 0.06em 0.08em 0 var(--ink); }
+.vb-char-arrow:focus-visible,
+.vb-char-dot:focus-visible { outline: 0.18em solid var(--surf); outline-offset: 0.2em; }
+.vb-char-plate { position: relative; z-index: 0; flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.8em; height: 6.6em; padding: 0.55em 1em 0.6em 0.7em; }
+.vb-char-plate::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, #2e2470 0%, var(--night) 45%, #17113a 100%);
+  border: 0.2em solid var(--ink);
+  border-radius: 0.7em;
+  transform: skewX(-6deg);
+  box-shadow: 0 0 0 0.18em var(--cc), 0.45em 0.5em 0 0.18em var(--ink);
+  transition: box-shadow 0.2s;
+}
+.vb-char-pic { position: relative; flex: none; width: 4.7em; height: 4.7em; padding: 0.2em; background: radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 65%), #3b2e7e; border: 0.16em solid var(--ink); border-radius: 0.6em; transform: skewX(-6deg); }
+.vb-char-pic > svg { width: 100%; height: 100%; transform: skewX(6deg); }
+.vb-pic-lock { position: absolute; right: -0.55em; bottom: -0.5em; width: 2.1em; height: 2.1em; transform: skewX(6deg); }
+.vb-pic-lock svg { width: 100%; height: 100%; }
+.vb-char-plate.vb-locked { --cc: #6d62a3; }
+.vb-char-plate.vb-locked .vb-char-pic > svg:first-child { filter: brightness(0) drop-shadow(0 0 0.12em rgba(185, 176, 230, 0.8)); opacity: 0.75; }
+.vb-char-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3em; }
+.vb-char-top { display: flex; align-items: baseline; gap: 0.55em; min-width: 0; }
+.vb-char-name { font-family: var(--f-disp); font-size: 2.05em; line-height: 1; letter-spacing: 0.02em; white-space: nowrap; color: var(--cc); --otw: 0.17em; transform: skewX(-8deg); }
+.vb-char-name.vb-long { font-size: 1.7em; }
+.vb-char-plate.vb-locked .vb-char-name { color: var(--lav); }
+.vb-char-tag { flex: none; margin-left: auto; align-self: center; padding: 0.2em 0.45em 0.16em; font-weight: 700; font-size: 0.64em; letter-spacing: 0.16em; color: var(--lav); background: rgba(20, 15, 46, 0.8); border-radius: 0.25em; }
+.vb-char-plate.vb-locked .vb-char-tag { color: var(--paper); background: var(--hot); }
+.vb-char-title { min-width: 0; overflow: hidden; font-weight: 700; font-size: 0.68em; letter-spacing: 0.16em; white-space: nowrap; text-overflow: ellipsis; color: var(--cc); }
+.vb-char-clamp { display: -webkit-box; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.vb-char-line { display: flex; align-items: center; gap: 0.45em; min-width: 0; font-weight: 600; font-size: 0.8em; line-height: 1.2; color: #ece6ff; }
+.vb-char-line .k { flex: none; padding: 0.14em 0.38em 0.1em; font-weight: 700; font-size: 0.74em; letter-spacing: 0.14em; color: var(--lav); background: rgba(20, 15, 46, 0.75); border-radius: 0.2em; }
+.vb-char-wic { display: inline-flex; flex: none; gap: 0.1em; margin: -0.3em 0; }
+.vb-char-wic:empty { display: none; }
+.vb-char-wic svg { width: 1.55em; height: 1.55em; }
+.vb-char-req { display: flex; align-items: center; gap: 0.5em; margin-top: 0.15em; padding: 0.3em 0.55em 0.32em 0.35em; font-size: 0.8em; line-height: 1.2; color: var(--paper); background: rgba(255, 61, 139, 0.14); border: 0.12em solid rgba(255, 61, 139, 0.75); border-radius: 0.35em; }
+.vb-char-req > span:last-child { display: -webkit-box; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.vb-chars.vb-peek .vb-chars-label { color: var(--volt); }
+.vb-char-req[hidden],
+.vb-char-line[hidden] { display: none; }
+.vb-char-lock { flex: none; width: 1.6em; height: 1.6em; }
+.vb-char-lock svg { width: 100%; height: 100%; }
+.vb-char-dots { display: flex; justify-content: center; gap: 0.4em; }
+.vb-char-dot {
+  position: relative;
+  width: 2.35em;
+  height: 2.35em;
+  margin: 0;
+  padding: 0.12em;
+  background: rgba(20, 15, 46, 0.8);
+  border: 0.13em solid #4a3aa0;
+  border-radius: 0.4em;
+  transform: skewX(-8deg);
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: translate 0.15s cubic-bezier(0.3, 1.7, 0.5, 1), border-color 0.15s;
+}
+.vb-char-dot > svg { width: 100%; height: 100%; transform: skewX(8deg); }
+.vb-char-dot:hover { border-color: var(--lav); }
+.vb-char-dot.vb-on { background: #3b2e7e; border-color: var(--volt); box-shadow: 0.14em 0.16em 0 var(--ink); translate: 0 -0.22em; }
+.vb-char-dot.vb-locked > svg:first-child { filter: brightness(0); opacity: 0.6; }
+.vb-dot-lock { position: absolute; right: -0.35em; bottom: -0.35em; width: 1.1em; height: 1.1em; transform: skewX(8deg); }
+.vb-dot-lock svg { width: 100%; height: 100%; }
+.vb-char-dot.vb-sel::after { content: ""; position: absolute; left: 50%; bottom: -0.62em; width: 0.6em; height: 0.36em; margin-left: -0.3em; background: var(--volt); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
 
 .vb-sheet { position: fixed; inset: 0; z-index: 5; display: none; overflow-y: auto; padding: 16px; background: rgba(20, 15, 46, 0.76); }
 .vb-sheet.vb-on { display: flex; animation: vb-in 0.18s ease-out both; }
@@ -1086,6 +1441,66 @@
 }
 .vb-how-callout .k { color: var(--volt); }
 .vb-how-callout .m { color: var(--sun); }
+.vb-rules b.pur, .vb-rules em.pur { color: #c99bff; }
+.vb-rules b.win, .vb-rules em.win { color: var(--lime); }
+.vb-how-shr { grid-column: 1 / -1; }
+.vb-how-shr ul { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.6em; padding: 0; list-style: none; }
+.vb-how-shr li { display: grid; grid-template-columns: 2.4em minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; column-gap: 0.5em; padding: 0.45em 0.6em 0.5em 0.45em; background: rgba(20, 15, 46, 0.6); border: 0.13em solid #3b2e7e; border-radius: 0.45em; }
+.vb-how-shr .vb-how-ic { grid-row: span 2; width: 2.4em; height: 2.4em; }
+.vb-how-shr b { font-family: var(--f-disp); font-weight: 400; font-size: 0.95em; letter-spacing: 0.03em; color: var(--surf); }
+.vb-how-shr li > span:last-child { font-size: 0.74em; line-height: 1.25; color: #ece6ff; }
+.vb-how-ic svg { width: 100%; height: 100%; }
+.vb-how-q { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 0.6em; margin-top: -0.2em; font-size: 0.9em; color: #ece6ff; text-align: left; }
+.vb-how-q .vb-how-ic { flex: none; width: 1.9em; height: 1.9em; }
+.vb-how-q b { font-family: var(--f-disp); font-weight: 400; letter-spacing: 0.04em; color: var(--volt); }
+
+/* =====================================================================
+   QUESTS SHEET
+   ===================================================================== */
+.vb-qs { z-index: 22; padding: 16px; }
+.vb-qs-panel { position: relative; display: flex; flex-direction: column; width: min(68em, 100%); max-height: calc(100vh - 32px); margin: auto; padding: 1.4em 1.7em 1.3em; animation: vb-pop-in 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.vb-qs-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6em 2em; margin-bottom: 0.9em; }
+.vb-qs-head .vb-h { margin: 0; }
+.vb-qs-sum { display: flex; flex-direction: column; align-items: flex-end; gap: 0.4em; min-width: 13em; }
+.vb-qs-num { display: flex; align-items: baseline; gap: 0.2em; font-family: var(--f-disp); }
+.vb-qs-num b { font-weight: 400; font-size: 2.1em; line-height: 1; color: var(--volt); text-shadow: 0.06em 0.08em 0 var(--ink); }
+.vb-qs-num span { font-size: 1.25em; color: var(--paper); }
+.vb-qs-num small { margin-left: 0.5em; font-family: var(--f-ui); font-weight: 700; font-size: 0.7em; letter-spacing: 0.22em; color: var(--lav); }
+.vb-qs-bar { width: 100%; height: 0.62em; overflow: hidden; background: rgba(20, 15, 46, 0.85); border: 0.13em solid var(--ink); border-radius: 0.3em; transform: skewX(-14deg); }
+.vb-qs-bar i { display: block; height: 100%; transform-origin: 0 50%; transform: scaleX(0); background: linear-gradient(180deg, #fff3a8 0 35%, var(--volt) 35%); transition: transform 0.6s cubic-bezier(0.2, 1, 0.3, 1) 0.2s; }
+.vb-qs-body { flex: 1 1 auto; min-height: 0; margin: 0 -0.7em; padding: 0.3em 0.7em 0.5em; overflow-y: auto; outline: none; scrollbar-width: thin; scrollbar-color: #4a3aa0 transparent; }
+.vb-qs-body:focus-visible { box-shadow: inset 0 0 0 0.14em var(--surf); border-radius: 0.4em; }
+.vb-qs-cat + .vb-qs-cat { margin-top: 1.15em; }
+.vb-qs-cat-h { display: flex; align-items: center; gap: 0.5em; margin-bottom: 0.6em; font-family: var(--f-disp); font-weight: 400; font-size: 1.25em; letter-spacing: 0.05em; color: var(--volt); text-shadow: 0.06em 0.08em 0 var(--ink); }
+.vb-qs-cat-ic { flex: none; width: 1.45em; height: 1.45em; }
+.vb-qs-cat-ic svg { width: 100%; height: 100%; }
+.vb-qs-cat-h b { padding: 0.12em 0.45em 0.08em; font-weight: 400; font-size: 0.72em; color: var(--lav); background: var(--ink); border-radius: 0.25em; text-shadow: none; }
+.vb-qs-cat-h::after { content: ""; flex: 1; height: 0.14em; background: linear-gradient(90deg, #4a3aa0, rgba(74, 58, 160, 0)); }
+.vb-qs-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 21em), 1fr)); gap: 0.6em; padding: 0; list-style: none; }
+.vb-q { position: relative; display: flex; gap: 0.75em; min-width: 0; padding: 0.62em 0.85em 0.68em 0.62em; background: rgba(20, 15, 46, 0.62); border: 0.14em solid #3b2e7e; border-radius: 0.5em; }
+.vb-q.vb-done { background: linear-gradient(100deg, rgba(140, 255, 90, 0.13), rgba(20, 15, 46, 0.62) 62%); border-color: rgba(140, 255, 90, 0.55); }
+.vb-q-ic { position: relative; flex: none; width: 2.9em; height: 2.9em; padding: 0.3em; background: #2e2470; border: 0.14em solid var(--ink); border-radius: 0.45em; transform: skewX(-8deg); }
+.vb-q-ic > svg { width: 100%; height: 100%; }
+.vb-q:not(.vb-done) .vb-q-ic > svg { opacity: 0.8; }
+.vb-q-ck { position: absolute; right: -0.5em; bottom: -0.45em; width: 1.35em; height: 1.35em; }
+.vb-q-ck svg { width: 100%; height: 100%; }
+.vb-q-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.26em; }
+.vb-q-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6em; }
+.vb-q-name { font-family: var(--f-disp); font-weight: 400; font-size: 1.12em; line-height: 1.1; color: var(--paper); overflow-wrap: anywhere; }
+.vb-q-state { flex: none; font-weight: 700; font-size: 0.76em; letter-spacing: 0.06em; color: var(--lav); font-variant-numeric: tabular-nums; }
+.vb-q.vb-done .vb-q-state { padding: 0.12em 0.45em 0.08em; letter-spacing: 0.16em; color: var(--ink); background: var(--lime); border-radius: 0.2em; }
+.vb-q-desc { font-size: 0.82em; line-height: 1.3; color: #d9d2f5; }
+.vb-q-bar { height: 0.5em; margin: 0.12em 0 0.08em; overflow: hidden; background: rgba(255, 246, 229, 0.1); border-radius: 0.25em; transform: skewX(-14deg); }
+.vb-q-bar i { display: block; height: 100%; transform-origin: 0 50%; background: linear-gradient(180deg, #9af5ff 0 35%, var(--surf) 35%); }
+.vb-q.vb-done .vb-q-bar i { background: linear-gradient(180deg, #d4ffb8 0 35%, var(--lime) 35%); }
+.vb-q-rw { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3em 0.4em; font-size: 0.8em; }
+.vb-q-rw .k { font-weight: 700; font-size: 0.86em; letter-spacing: 0.16em; color: var(--lav); }
+.vb-q-chip { display: inline-flex; align-items: center; gap: 0.3em; min-width: 0; padding: 0.1em 0.55em 0.1em 0.2em; font-weight: 700; color: var(--volt); background: rgba(20, 15, 46, 0.9); border: 0.12em solid #4a3aa0; border-radius: 0.3em; }
+.vb-q-chip svg { flex: none; width: 1.5em; height: 1.5em; }
+.vb-q.vb-done .vb-q-chip { color: var(--lime); border-color: rgba(140, 255, 90, 0.5); }
+.vb-q-plus { font-weight: 700; color: var(--lav); }
+.vb-qs-foot { display: flex; align-items: center; justify-content: center; gap: 1.4em; margin-top: 1em; }
+.vb-qs-foot .vb-hint { margin: 0; }
 
 /* =====================================================================
    GAME OVER
@@ -1104,6 +1519,62 @@
 }
 .vb-over-bg::before { top: 0.9em; transform: rotate(-1.2deg); }
 .vb-over-bg::after { bottom: 0.9em; transform: rotate(-1.2deg); }
+.vb-over.vb-victory .vb-over-bg { background: radial-gradient(ellipse at 28% 30%, rgba(255, 225, 77, 0.32), rgba(255, 122, 26, 0) 62%), rgba(20, 15, 46, 0.9); }
+.vb-over-rays {
+  position: absolute;
+  left: 28%;
+  top: 28%;
+  display: none;
+  width: 160vmax;
+  height: 160vmax;
+  margin: -80vmax 0 0 -80vmax;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 225, 77, 0.14) 0deg 7deg, rgba(255, 225, 77, 0) 7deg 18deg);
+  -webkit-mask-image: radial-gradient(closest-side, #000 8%, transparent 62%);
+  mask-image: radial-gradient(closest-side, #000 8%, transparent 62%);
+  animation: vb-spin 48s linear infinite;
+}
+.vb-confetti { position: absolute; inset: 0; display: none; overflow: hidden; }
+.vb-victory .vb-over-rays,
+.vb-victory .vb-confetti { display: block; }
+.vb-confetti i { position: absolute; top: -3em; left: var(--x); width: 0.7em; height: 1.1em; background: var(--c); border: 0.12em solid var(--ink); border-radius: 0.15em; rotate: var(--r); opacity: 0; animation: vb-fall var(--s) linear var(--d) infinite; }
+.vb-victory .vb-bonked { color: var(--volt); animation-name: vb-bonk; }
+.vb-bonked.vb-long { font-size: clamp(42px, min(9vh, 8vw), 118px); }
+.vb-bonked.vb-xlong { font-size: clamp(38px, min(8.4vh, 6.8vw), 104px); }
+.vb-ov-isl { display: none; align-items: center; gap: 0.6em 1em; animation: vb-rise 0.4s 0.45s ease-out both; }
+.vb-ov-isl.vb-on { display: flex; flex-wrap: wrap; }
+.vb-ovi-list { display: flex; gap: 0.6em; padding: 0 0 0 0.2em; list-style: none; }
+.vb-ovi-list .vb-md { width: 2.4em; height: 2.4em; }
+.vb-ovi-list .vb-reached .vb-md { box-shadow: 0 0 0 0.15em var(--hot), 0.16em 0.2em 0 0.15em var(--ink); }
+.vb-ovi-txt { display: flex; flex-direction: column; gap: 0.1em; }
+.vb-ovi-txt b { font-family: var(--f-disp); font-weight: 400; font-size: 1.35em; line-height: 1; color: var(--volt); text-shadow: 0.06em 0.08em 0 var(--ink); }
+.vb-ovi-txt span { font-weight: 700; font-size: 0.7em; letter-spacing: 0.2em; color: var(--paper); }
+.vb-ovi-txt small { font-weight: 700; font-size: 0.66em; letter-spacing: 0.16em; color: var(--hot); }
+.vb-ov-rewards { display: none; margin-bottom: 0.4em; }
+.vb-ov-rewards.vb-on { display: block; }
+.vb-rw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 11em), 1fr)); gap: 0.6em 0.7em; margin: 0 0 1em; }
+.vb-rw {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  min-width: 0;
+  padding: 0.3em 0.7em 0.3em 0.3em;
+  background: linear-gradient(100deg, rgba(255, 225, 77, 0.22), rgba(20, 15, 46, 0.75) 72%);
+  border: 0.15em solid var(--ink);
+  border-radius: 0.45em;
+  box-shadow: 0 0 0 0.13em var(--volt), 0.2em 0.24em 0 0.13em var(--ink);
+  transform: skewX(-6deg);
+  animation: vb-stamp 0.45s cubic-bezier(0.2, 1.6, 0.35, 1) both;
+  animation-delay: calc(0.9s + var(--i) * 110ms);
+}
+.vb-rw-ic { position: relative; flex: none; display: grid; place-items: center; width: 2.7em; height: 2.7em; }
+.vb-rw-ic .vb-burst { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--sun); animation: vb-spin 10s linear infinite; }
+.vb-rw-ic > svg:not(.vb-burst) { position: relative; width: 72%; height: 72%; }
+.vb-rw-t { display: flex; flex-direction: column; min-width: 0; }
+.vb-rw-t small { font-weight: 700; font-size: 0.6em; letter-spacing: 0.2em; color: var(--sun); }
+.vb-rw-t b { font-family: var(--f-disp); font-weight: 400; font-size: 1.02em; line-height: 1.08; color: var(--paper); overflow-wrap: anywhere; }
+.vb-rw-qs { display: flex; flex-wrap: wrap; gap: 0.4em; margin: 0 0 1.1em; padding: 0; list-style: none; }
+.vb-rw-qs li { display: inline-flex; align-items: center; gap: 0.35em; padding: 0.22em 0.7em 0.22em 0.25em; font-weight: 700; font-size: 0.84em; color: var(--paper); background: rgba(140, 255, 90, 0.13); border: 0.12em solid rgba(140, 255, 90, 0.6); border-radius: 1em; animation: vb-rise 0.35s ease-out both; animation-delay: calc(1.1s + var(--i) * 60ms); }
+.vb-rw-qs svg { flex: none; width: 1.3em; height: 1.3em; }
 .vb-over-wrap {
   position: relative;
   display: grid;
@@ -1262,15 +1733,40 @@
 @keyframes vb-bonk { 0% { opacity: 0; transform: skewX(-10deg) rotate(-3deg) scale(3) translateY(-0.3em); } 50% { opacity: 1; } 100% { opacity: 1; transform: skewX(-10deg) rotate(-3deg); } }
 @keyframes vb-stamp { 0% { opacity: 0; transform: scale(2.6) rotate(-30deg); } 100% { opacity: 1; transform: none; } }
 @keyframes vb-grow { from { transform: scaleX(0); } }
+@keyframes vb-swarm { 50% { opacity: 0.45; } }
+@keyframes vb-rage { 50% { box-shadow: 0 0 0 0.14em var(--volt), 0 0 1.4em rgba(255, 61, 139, 0.95), 0.3em 0.32em 0 0.14em var(--ink); } }
+@keyframes vb-qp-in { 0% { opacity: 0; transform: translateX(-115%) skewX(-10deg); } 60% { opacity: 1; } 100% { opacity: 1; transform: skewX(-10deg); } }
+@keyframes vb-qp-out { to { opacity: 0; transform: translateX(-70%) skewX(-10deg); } }
+@keyframes vb-qp-shine { to { transform: translateX(120%); } }
+@keyframes vb-bar-t { from { transform: translateY(-100%); } }
+@keyframes vb-bar-b { from { transform: translateY(100%); } }
+@keyframes vb-bar-t-out { to { transform: translateY(-110%); } }
+@keyframes vb-bar-b-out { to { transform: translateY(110%); } }
+@keyframes vb-bi-in { 0% { opacity: 0; transform: translateX(34vw) skewX(-24deg); } 60% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+@keyframes vb-bi-out { to { opacity: 0; transform: translateX(-34vw) skewX(-24deg); } }
+@keyframes vb-fall { 0% { opacity: 1; transform: translateY(0) rotate(0deg); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(108vh) rotate(560deg); } }
 
 /* =====================================================================
    RESPONSIVE
    ===================================================================== */
 @media (max-width: 1100px) {
   .vb-over-wrap { grid-template-columns: minmax(0, 1fr); max-width: 46em; }
+  .vb-how-shr ul { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+/* title: stack when the raptor can't sit beside the menu (narrow or portrait) */
+@media (max-width: 960px), (max-aspect-ratio: 5/4) {
+  .vb-title-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; align-items: start; row-gap: 1.3em; padding: 28px var(--xpad) 1.4em; }
+  .vb-title-main { grid-row: auto; align-self: start; }
+  .vb-side { grid-column: 1; grid-row: auto; }
+  .vb-chars { position: relative; left: auto; bottom: auto; width: min(100%, 30em); translate: none; justify-self: start; }
+  .vb-bests-card { max-height: none; min-height: 0; }
+  .vb-bests-card .vb-bests { max-height: min(52vh, 30em); }
+  .vb-footer { position: static; max-width: none; padding: 0; }
 }
 @media (max-width: 860px) {
-  .vb-title-grid { grid-template-columns: minmax(0, 1fr); align-items: start; padding-top: 28px; }
+  .vb-title-grid { padding-top: 28px; }
+  .vb-chars { justify-self: stretch; width: 100%; }
+  .vb-arch { width: 100%; }
   .vb-title-tint { background: linear-gradient(180deg, rgba(20, 15, 46, 0.55), rgba(20, 15, 46, 0.88) 55%); }
   .vb-menu { align-items: stretch; width: 100%; }
   .vb-menu > .vb-btn,
@@ -1278,6 +1774,7 @@
   .vb-menu-row { margin-left: 0; }
   .vb-menu-row .vb-btn { flex: 1 1 10em; }
   .vb-how { grid-template-columns: minmax(0, 1fr); }
+  .vb-how-shr ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .vb-footer { margin-top: 0; }
 }
 @media (max-width: 760px) {
@@ -1310,6 +1807,23 @@
   .vb-over-score { grid-template-columns: auto; }
   .vb-newbest { grid-column: 1; grid-row: 3; width: 6em; height: 6em; }
   .vb-btn-xl .vb-btn-in { font-size: 1.6em; }
+  .vb-char-name { font-size: 1.7em; }
+  .vb-char-pic { width: 4em; height: 4em; }
+  .vb-arch-name { font-size: 0.52em; letter-spacing: 0.02em; }
+  .vb-qs-panel { padding: 1.2em 1em 1.1em; }
+  .vb-qs-sum { align-items: stretch; width: 100%; }
+  .vb-isle-name, .vb-bi-name { white-space: normal; }
+  .vb-qp { font-size: 0.92em; }
+}
+
+@media (min-aspect-ratio: 2/1) and (min-width: 961px) {
+  .vb-side { grid-row: 1 / span 2; align-self: center; }
+  .vb-bests-card { max-height: calc(100vh - 2 * var(--tpad) - 4em); }
+}
+@media (max-height: 760px) and (min-width: 961px) {
+  .vb-title-main { gap: 0.8em; }
+  .vb-arch-list { --D: 2.6em; }
+  .vb-char-plate { height: 6em; }
 }
 
 /* Reduced motion: keep every state change visible, drop the loops and the big travel. */
@@ -1325,6 +1839,7 @@
   .vb-lowhp .vb-vignette { opacity: 0.7; }
   .vb-speedlines { display: none !important; }
   .vb-ram .vb-mom-panel::after { opacity: 0.8; transform: scale(1.03, 1.12); }
+  .vb-confetti, .vb-isle-warp { display: none !important; }
 }
 
 /* ---------------------------------------------------------------- global leaderboard (leaderboard.js) */

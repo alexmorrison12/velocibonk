@@ -4,19 +4,45 @@
 
 **[Play it in your browser →](https://alexmorrison12.github.io/velocibonk/)**
 
-A 3D survivors roguelite where speed is damage. Bhop, slide and slam across a procedurally generated island while your auto-weapons shred the horde. The faster you move, the harder everything hits: your momentum multiplies every hit and every point, and at ×2 you enter RAM mode and plow straight through them.
+A 3D survivors roguelite where speed is damage. Bhop, slide and slam across an archipelago of five procedurally generated islands while your auto-weapons shred the horde. The faster you move, the harder everything hits: your momentum multiplies every hit and every point, and at ×2 you enter RAM mode and plow straight through them.
+
+## The Archipelago
+
+A run hops across up to five islands, each a different biome with its own terrain, enemies, music and final boss:
+
+| # | Island | Biome | Final boss |
+|---|---|---|---|
+| 1 | Palm Paradise | tropical beaches and hills | Tiki Titan: sweeping eye lasers, coconut rain |
+| 2 | Frostbite Peaks | slippery snow and frozen lakes | Yeti King: ice-spike lines, snowball barrages, frost breath |
+| 3 | Sunscorch Dunes | dunes that double as launch ramps | Dune Devourer: burrows under you, sand tornadoes, scarab swarms |
+| 4 | Gloomhollow | moonlit graveyard swamp | The Gravelord: teleport slashes, skull bullet-hell spirals |
+| 5 | Magma Core | black basalt, lava rivers | Magmaw: fire breath, meteor rain, flyover bombing runs |
+
+- Each island runs an **8:00 countdown**. Two mini-bosses show up along the way.
+- The **boss portal** on your minimap summons the final boss early, for a score bonus.
+- At **0:00** the boss arrives anyway and the **Final Swarm** of ghosts hunts you until it dies.
+- Beat the boss and an **exit portal** opens. The first clear of an island unlocks the next one. From then on, runs chain islands, your build carries over, and weapon and tome level caps rise each island.
+
+## Progression
+
+- **26 quests** ("do X, unlock Y") unlock weapons, tomes, a shrine type, permanent perks, islands and characters.
+- **Six raptors**, each with a starting weapon and a passive: Rex, Zappy, Nana, Blaze, Tank, and a secret one.
+- **Shrines:**
+  - **Blessing** gives you a tome.
+  - **Moai Head** gives a raw stat boost that never caps.
+  - **Challenge Totem** starts a timed kill trial with epic loot as the reward.
+  - **Greed Idol** gives more gold and XP but makes enemies tougher.
+  - **Magnet Pylon** pulls in every gem on the island.
 
 ## Features
 
 - **Momentum combat.** Bunny-hopping, downhill slides, launches off hill crests, jump and boost pads, and ground-slams all raise a ×1–×8 damage and score multiplier.
-- **Build crafting.** 10 auto-weapons, 14 stat tomes, rarity-rolled upgrade cards, chests, shrines and elite enemies.
-- **Bosses.** Three bosses at 3:00, 6:00 and 9:00 with shockwaves you have to jump over, then a Final Swarm at 10:00 that never stops.
-- **Daily island.** Everyone gets the same seeded island each day.
-- **Global leaderboard.** Today's top 10 and an all-time board on the title screen. Hit **BEAT IT** on any row to play that run's island with its score as your target, and post your own score from the game-over screen.
-- **Challenge links.** The game-over screen also copies a link with your score. Friends who open it play the same island and try to beat it.
-- **Ghost racing.** Your best run on each island replays as a ghost the next time you play it.
+- **Build crafting.** 12 auto-weapons, including Frost Nova and Black Hole. 14 stat tomes, rarity-rolled upgrade cards, chests and elite enemies.
+- **Daily island chain.** Everyone gets the same seeded five-island chain each day.
+- **Global leaderboard.** A daily top 10 and an all-time board on the title screen. Hit **BEAT IT** on any row to play that run's islands with its score as your target.
+- **Challenge links** and **ghost racing** against your own best run.
 - **Hordes.** 1,500+ enemies on screen, animated on the GPU with instanced meshes.
-- **Fully procedural.** Every model, texture, sound effect and song is generated in code at load time. The whole game ships as a single ~900 KB HTML file.
+- **Fully procedural.** Every model, texture, sound effect and song is generated in code at load time. The whole game ships as a single ~1 MB HTML file.
 
 ## Controls
 
@@ -44,14 +70,18 @@ three.js r186, bundled with esbuild. No other runtime dependencies.
 
 | File | What it does |
 |---|---|
-| `src/main.js` | Game loop, spawn director, scoring, daily seeds, challenge links, ghosts |
-| `src/world.js` | Island terrain, water, sky, props, pads, chests, shrines |
+| `src/main.js` | Game loop, run flow, island travel, boss intros, scoring, daily seeds, challenge links, ghosts |
+| `src/stage.js` | One island: countdown, spawn director, mini-bosses, boss portal, Final Swarm, shrines and trials |
+| `src/biomes.js` | The five islands: terrain shape, palettes, sky, liquids, props, ambience, bosses, level caps |
+| `src/world.js` | Island generation: terrain, sea/ice/lava/swamp, sky with stars and aurora, props, landmarks |
+| `src/bosses.js`, `src/hazards.js` | Boss brains and the attack kit (lasers, spike lines, tornadoes, bullet spirals, breath, meteors) |
+| `src/progress.js` | Quests, unlocks, characters and perks (saved locally) |
 | `src/player.js` | Momentum character controller and procedural animation |
-| `src/enemies.js` | Horde simulation (typed arrays + spatial hash), instanced rendering, bosses |
+| `src/enemies.js` | Horde simulation (typed arrays + spatial hash), instanced rendering, biome reskins |
 | `src/weapons.js`, `src/upgrades.js`, `src/pickups.js` | Weapons, level-up cards, XP and gold |
 | `src/models.js` | Procedural low-poly models |
-| `src/audio.js` | Web Audio synthesized sound effects and adaptive music |
-| `src/fx.js` | Particles, damage numbers, speed lines and post-processing |
+| `src/audio.js` | Web Audio synthesized sound effects and biome soundtracks |
+| `src/fx.js` | Particles, weather, damage numbers, portals, speed lines and post-processing |
 | `src/ui.js`, `src/ui.css` | HUD and menus |
 | `src/leaderboard.js` | Global leaderboard client (Supabase: scores are read and written only through two Postgres functions that validate and rate-limit submissions) |
 

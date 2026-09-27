@@ -88,7 +88,8 @@ export class Leaderboard {
       const text = h('span', 'vb-lb-text');
       const top = h('span', 'vb-lb-top');
       top.append(h('span', 'vb-lb-name', r.name), h('span', 'vb-best-score', commas(r.score)));
-      text.append(top, h('span', 'vb-best-meta', `${mmss(r.time_s)} · ${commas(r.kills)} KO · ${island}`));
+      const reached = r.island > 1 ? ` · ISLAND ${r.island}/5` : '';
+      text.append(top, h('span', 'vb-best-meta', `${mmss(r.time_s)} · ${commas(r.kills)} KO · ${island}${reached}`));
       const beat = h('button', 'vb-lb-beat', 'BEAT IT');
       beat.type = 'button';
       beat.title = `Play ${island.toLowerCase()} and try to beat ${commas(r.score)}`;
@@ -150,7 +151,7 @@ export class Leaderboard {
     try {
       const r = await rpc('submit_score', {
         p_name: name, p_score: Math.round(run.score), p_time: Math.floor(run.time), p_kills: run.kills,
-        p_level: run.level, p_top_speed: +run.topSpeed.toFixed(2), p_max_momentum: +Math.min(8.5, run.maxMomentum).toFixed(2), p_tag: run.tag,
+        p_level: run.level, p_top_speed: +run.topSpeed.toFixed(2), p_max_momentum: +Math.min(8.5, run.maxMomentum).toFixed(2), p_tag: run.tag, p_island: run.island || 1,
       });
       f.btnIn.textContent = 'POSTED';
       const parts = [];
