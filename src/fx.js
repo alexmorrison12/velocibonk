@@ -569,6 +569,7 @@ void main() {
   }
 }`;
 const FIRE_FS = /* glsl */`
+uniform float uFade;
 varying vec2 vUv;
 varying float vHeat;
 varying float vType;
@@ -597,6 +598,7 @@ void main() {
   }
   gl_FragColor = vec4(col, 1.0);
   #include <colorspace_fragment>
+  gl_FragColor *= uFade;
 }`;
 
 const TRAIL_VS = /* glsl */`
@@ -1238,6 +1240,7 @@ void main() {
   gl_Position = projectionMatrix * mv;
 }`;
 const BH_FS = /* glsl */`
+uniform float uFade;
 uniform float uTime;
 varying vec2 vQ;
 varying float vPart;
@@ -1283,6 +1286,7 @@ void main() {
   }
   gl_FragColor = vec4(col, a);
   #include <colorspace_fragment>
+  gl_FragColor *= uFade;
 }`;
 
 // ---- sand tornado: two swirling funnel shells, base dust ring, orbiting debris
@@ -1529,6 +1533,7 @@ void main() {
   gl_Position = projectionMatrix * mv;
 }`;
 const FROST_FS = /* glsl */`
+uniform float uFade;
 uniform float uTime;
 varying vec2 vUv;
 varying vec2 vLoc;
@@ -1572,6 +1577,7 @@ void main() {
   }
   gl_FragColor = vec4(col, a);
   #include <colorspace_fragment>
+  gl_FragColor *= uFade;
 }`;
 
 // ---- soft additive ground glow (lava pools, burning aftermath, freeze zones)
@@ -2060,6 +2066,7 @@ class Trail {
 export class FX {
   constructor(scene) {
     this.scene = scene;
+    this.tint = 1; this.weaponAlpha = 1; this._uFade = { value: 1 };
     this.root = new THREE.Group();
     this.root.name = 'FX';
     scene.add(this.root);
@@ -2170,7 +2177,7 @@ export class FX {
 
     // --- fire patches (flame licks + ground glow), 3072 blobs
     this.fireRing = new GpuRing(3072, 8);
-    this.fireMesh = ringMesh(this.root, instancedQuad(1), fxMaterial(FIRE_VS, FIRE_FS, { uTime: U }, true), this.fireRing, [['aA', 4], ['aB', 4]], 3);
+    this.fireMesh = ringMesh(this.root, instancedQuad(1), fxMaterial(FIRE_VS, FIRE_FS, { uTime: U, uFade: this._uFade }, true), this.fireRing, [['aA', 4], ['aB', 4]], 3);
 
     // --- pop texts + trail
     this.pops = new PopTexts(this.overlay, 32);
@@ -2222,7 +2229,7 @@ export class FX {
     const drag = opts.drag ?? 1.2, glow = opts.glow ?? 1, dir = opts.dir;
     const col = colorOf(color, 0xffffff);
     const floor = this._floorY(pos, opts);
-    count = Math.min(count | 0, 800);
+    count = Math.min(Math.round(count * this.tint), 800);
     for (let k = 0; k < count; k++) {
       const u = rand() * 2 - 1, th = rand() * TAU, sr = Math.sqrt(1 - u * u);
       const dx = sr * Math.cos(th) * spread, dz = sr * Math.sin(th) * spread;
@@ -2335,20 +2342,23 @@ export class FX {
   }
 
   // -------------------------------------------------------------------------------------------
+  /** Weapon-effect opacity (settings → ATTACK FX). The Arsenal sets `tint` while it spawns effects. */
+  setWeaponOpacity(k) { this._uFade.value = k; this.weaponAlpha = k; }
+
   ring(pos, radius, color = '#ffffff', duration = 0.45, thickness = 0.35) {
-    const c = colorOf(color, 0xffffff), r = this.ringRing, A = r.array;
+    const c = colorOf(color, 0xffffff), r = this.ringRing, A = r.array, k = this.tint;
     const o = r.alloc(1) * 12;
     A[o] = pos.x; A[o + 1] = pos.y; A[o + 2] = pos.z; A[o + 3] = this._clock;
-    A[o + 4] = c.r; A[o + 5] = c.g; A[o + 6] = c.b; A[o + 7] = Math.max(0.02, duration);
+    A[o + 4] = c.r * k; A[o + 5] = c.g * k; A[o + 6] = c.b * k; A[o + 7] = Math.max(0.02, duration);
     A[o + 8] = Math.max(0.01, radius); A[o + 9] = Math.max(0.01, thickness); A[o + 10] = 0; A[o + 11] = 0;
     r.touch(A[o + 3] + A[o + 7]);
   }
 
   telegraph(pos, radius, duration, color = '#ff2a2a') {
-    const c = colorOf(color, 0xff2a2a), r = this.teleRing, A = r.array;
+    const c = colorOf(color, 0xff2a2a), r = this.teleRing, A = r.array, k = this.tint;
     const o = r.alloc(1) * 12;
     A[o] = pos.x; A[o + 1] = pos.y; A[o + 2] = pos.z; A[o + 3] = this._clock;
-    A[o + 4] = c.r; A[o + 5] = c.g; A[o + 6] = c.b; A[o + 7] = Math.max(0.05, duration || 0);
+    A[o + 4] = c.r * k; A[o + 5] = c.g * k; A[o + 6] = c.b * k; A[o + 7] = Math.max(0.05, duration || 0);
     A[o + 8] = Math.max(0.05, radius || 0); A[o + 9] = 0; A[o + 10] = 0; A[o + 11] = 0;
     r.touch(A[o + 3] + A[o + 7] + 0.14);
   }
@@ -2392,7 +2402,7 @@ export class FX {
         A[o + 3] = P[ip]; A[o + 4] = P[ip + 1]; A[o + 5] = P[ip + 2];
         A[o + 6] = P[inx]; A[o + 7] = P[inx + 1]; A[o + 8] = P[inx + 2];
         A[o + 9] = sd === 0 ? -1 : 1; A[o + 10] = wd; A[o + 11] = seed;
-        A[o + 12] = c.r; A[o + 13] = c.g; A[o + 14] = c.b; A[o + 15] = now;
+        A[o + 12] = c.r * this.tint; A[o + 13] = c.g * this.tint; A[o + 14] = c.b * this.tint; A[o + 15] = now;
       }
     }
     r.touch(now + this.zapMesh.material.uniforms.uLife.value);
@@ -2403,7 +2413,7 @@ export class FX {
     const o = r.alloc(1) * 12;
     A[o] = from.x; A[o + 1] = from.y; A[o + 2] = from.z; A[o + 3] = this._clock;
     A[o + 4] = to.x; A[o + 5] = to.y; A[o + 6] = to.z; A[o + 7] = Math.max(0.02, duration);
-    A[o + 8] = c.r; A[o + 9] = c.g; A[o + 10] = c.b; A[o + 11] = Math.max(0.01, width);
+    A[o + 8] = c.r * this.tint; A[o + 9] = c.g * this.tint; A[o + 10] = c.b * this.tint; A[o + 11] = Math.max(0.01, width);
     r.touch(A[o + 3] + A[o + 7]);
   }
 
@@ -2514,7 +2524,7 @@ export class FX {
     this.bhRing = new GpuRing(8, 8);
     {
       const g = partsGeometry((b) => { b.quad(0); b.quad(2); b.quad(1); b.quad(4); for (let k = 0; k < 40; k++) b.quad(3, k); });
-      this.bhMesh = ringMesh(root, g, pmaMaterial(BH_VS, BH_FS, { uTime: U }), this.bhRing, [['aA', 4], ['aB', 4]], 5);
+      this.bhMesh = ringMesh(root, g, pmaMaterial(BH_VS, BH_FS, { uTime: U, uFade: this._uFade }), this.bhRing, [['aA', 4], ['aB', 4]], 5);
     }
 
     // --- tornadoes (persistent handles): 8 slots
@@ -2541,7 +2551,7 @@ export class FX {
     this.frostRing_ = new GpuRing(24, 8);
     {
       const g = partsGeometry((b) => { b.quad(0); for (let k = 0; k < 28; k++) b.quad(1, k); for (let k = 0; k < 14; k++) b.quad(2, k); });
-      this.frostMesh = ringMesh(root, g, pmaMaterial(FROST_VS, FROST_FS, { uTime: U }), this.frostRing_, [['aA', 4], ['aB', 4]], 3);
+      this.frostMesh = ringMesh(root, g, pmaMaterial(FROST_VS, FROST_FS, { uTime: U, uFade: this._uFade }), this.frostRing_, [['aA', 4], ['aB', 4]], 3);
     }
 
     // --- ground glows
@@ -2749,7 +2759,7 @@ export class FX {
     // collapse shockwave: a ring record whose spawn time is in the future (GPU culls it until then)
     const rr = this.ringRing, RA = rr.array, q = rr.alloc(1) * 12, when = now + duration - 0.03;
     RA[q] = pos.x; RA[q + 1] = this._gy(pos.x, pos.z, pos.y - 0.9); RA[q + 2] = pos.z; RA[q + 3] = when;
-    RA[q + 4] = 0.85; RA[q + 5] = 0.35; RA[q + 6] = 1.6; RA[q + 7] = 0.5;
+    const wa = this.weaponAlpha; RA[q + 4] = 0.85 * wa; RA[q + 5] = 0.35 * wa; RA[q + 6] = 1.6 * wa; RA[q + 7] = 0.5;
     RA[q + 8] = radius * 1.4; RA[q + 9] = 1.1; RA[q + 10] = 0; RA[q + 11] = 0;
     rr.touch(when + 0.5);
   }

@@ -91,7 +91,7 @@ class Game {
     this.hazards = new Hazards(scene, this);
     this.audio = audio;
 
-    this.settings = Object.assign({ master: 0.8, music: 0.55, sfx: 0.8, sensitivity: 1, invertY: false, quality: 'high', showFps: false }, store.get('settings', {}));
+    this.settings = Object.assign({ master: 0.8, music: 0.55, sfx: 0.8, sensitivity: 1, invertY: false, quality: 'high', showFps: false, fxOpacity: 1 }, store.get('settings', {}));
     this.bests = store.get('bests', []);
     this.challenge = parseChallenge();
     this.daily = dailyInfo();
@@ -146,6 +146,8 @@ class Game {
       this.sun.castShadow = this.settings.quality === 'high';
       this.post.setSize(innerWidth, innerHeight);
     }
+    const fxa = Math.min(1, Math.max(0.1, +this.settings.fxOpacity || 1));
+    this.fx?.setWeaponOpacity?.(fxa); this.arsenal?.setOpacity?.(fxa);
   }
 
   onResize() {
@@ -220,7 +222,7 @@ class Game {
     this.applyIsland(I);
     this.enemies.reset(); this.pickups.reset(); this.hazards.clear(); this.fx.clear(); this.arsenal.clearTransient();
     resetStage(this);
-    this.player.reset(0, 0);
+    this.player.reset(0, 0); this.momentum = 1;
     this.wcap = weaponCap(n); this.tcap = tomeCap(n);
     this.chestsOpened = Math.floor((this.chestsOpened || 0) / 2);
     this._prompt = undefined; this.ui.setPrompt(null);
@@ -311,7 +313,7 @@ class Game {
     this.kills = 0; this.score = 0; this.runTime = 0; this.levelsPending = 0; this.rerolls = 2 + (P.hasPerk('reroll') ? 1 : 0);
     this.invuln = 0; this.topSpeed = 0; this.maxMomentum = 1; this.bossKills = 0; this.chestsOpened = 0;
     this.dmgTaken = 0; this.numbersThisFrame = 0; this.noHitT = 0;
-    this.momentum = 1; this.ramming = false; this.dying = 0; this.timeScale = 1; this.hitStop = 0;
+    this.momentum = 1; this.hpCarry = 0; this.ramming = false; this.dying = 0; this.timeScale = 1; this.hitStop = 0;
     this.combo = 0; this.comboT = 0; this.nextComboMilestone = 25; this.bestCombo = 0;
     this.damageFlash = 0; this.whiteFlash = 0;
     this.yaw = 0; this.pitch = 0.38;
@@ -579,6 +581,11 @@ class Game {
     this.player.vel.set(0, 18, 0); this.player.onGround = false;
   }
 
+  // the momentum ceiling: ×2.4 on a fresh run, rising with level and Momentum charms up to ×8
+  momentumCap() {
+    return Math.min(8, 2.4 + 0.11 * (this.level - 1) + 2.5 * Math.max(0, this.stats.momentum - 1));
+  }
+
   // ---------------------------------------------------------------- bosses
   onBossSpawn(b, final) {
     this._prompt = null; this.ui.setPrompt(null);
@@ -629,6 +636,8 @@ class Game {
     this.swarm = false; this.post.setSwarm?.(0);
     this.hazards.clear();
     const purged = this.enemies.purge();
+    this.hpCarry = this.hpBase; // the next island starts at least this tough
+    this.pickups.vacuum(); // every gem, coin and heart on the island flies to you
     this.progress.clearIsland(this.islandN);
     if (left >= 180) this.progress.max('fastBoss', 1);
     if (this.greedActive) this.progress.max('greedClear', 1);
@@ -692,7 +701,7 @@ class Game {
     P.vel.set(d.x * sp, d.y * sp - 12 * t, d.z * sp);
     P.onGround = false; P.animate(rdt, this.time, 0);
     P.model.rotation.x += rdt * 9;
-    this.momentum = 8; this.fx.trail(_p.copy(P.pos), 1);
+    this.momentum = this.momentumCap(); this.fx.trail(_p.copy(P.pos), 1);
     const cam = this.camera;
     cam.position.set(P.pos.x - d.x * 14, P.pos.y + 4 - t * 2, P.pos.z - d.z * 14);
     cam.lookAt(P.pos.x, P.pos.y, P.pos.z);
@@ -785,8 +794,10 @@ class Game {
     const r = 3.8 * this.stats.area * (1 + fall / 60);
     // tuned down: slams are crowd control, not a boss killer (bosses also take only 30%)
     const dmg = 12 * (1 + Math.min(fall, 60) / 45) * this.stats.might * Math.min(this.momentum, 2.5);
+    this.fx.tint = this.fx.weaponAlpha;
     this.fx.ring(_p.copy(P).setY(P.y + 0.3), r, '#FFFFFF', 0.35, 0.7);
     this.fx.burst(_p.copy(P).setY(P.y + 0.3), '#d8c29a', 18, { speed: 9, up: 6, size: 0.25 });
+    this.fx.tint = 1;
     this.shake(0.35 + fall / 120);
     audio.play('smash', { volume: 0.9, pitch: 0.7 });
     const n = E.query(P.x, P.z, r, _hits, 600);
@@ -950,8 +961,8 @@ class Game {
     P.animate(dt, this.time, this.yaw);
 
     const eff = Math.hypot(P.hSpeed, Math.max(0, -P.vel.y) * 0.25);
-    const target = Math.min(8, 1 + this.stats.momentum * Math.max(0, eff - 8) / 10);
-    this.momentum = target > this.momentum ? lerp(this.momentum, target, 1 - Math.exp(-10 * dt)) : lerp(this.momentum, target, 1 - Math.exp(-(this.boons.rush ? 0.95 : 2.4) * dt));
+    const target = Math.min(this.momentumCap(), 1 + this.stats.momentum * Math.max(0, eff - 9) / 11);
+    this.momentum = target > this.momentum ? lerp(this.momentum, target, 1 - Math.exp(-1.6 * dt)) : lerp(this.momentum, target, 1 - Math.exp(-(this.boons.rush ? 0.95 : 2.4) * dt));
     this.ramming = this.momentum >= 2 && !P.dead;
     if (this.ramming && !this.ramAnnounced) {
       this.ramAnnounced = true;
@@ -1047,7 +1058,7 @@ class Game {
     const h = this.hud, E = this.enemies;
     h.hp = Math.max(0, this.hp); h.maxHp = this.stats.maxHp; h.level = this.level; h.xp = this.xp; h.xpNext = this.xpNext;
     h.time = this.runTime; h.score = Math.round(this.score); h.kills = this.kills; h.gold = Math.floor(this.gold);
-    h.speed = this.player.hSpeed; h.momentum = this.momentum; h.ram = this.ramming; h.phase = phaseText(this);
+    h.speed = this.player.hSpeed; h.momentum = this.momentum; h.momCap = this.momentumCap(); h.ram = this.ramming; h.phase = phaseText(this);
     h.fps = this.settings.showFps ? Math.round(this.fps) : null;
     h.timeLeft = stageTimeLeft(this);
     if (!h.island || h.island.n !== this.islandN) h.island = { n: this.islandN, name: this.island.name, biome: this.island.id };

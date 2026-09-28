@@ -26,10 +26,17 @@ export class Pickups {
         val: new Float32Array(cap), mag: new Uint8Array(cap), age: new Float32Array(cap),
       });
     });
+    // XP gems get a glowing ground ring so they read against grass, snow and sand
+    const ring = new THREE.RingGeometry(0.42, 0.7, 20).rotateX(-Math.PI / 2);
+    this.halo = new THREE.InstancedMesh(ring, new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, opacity: 0.85 }), CAP[0]);
+    this.halo.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(CAP[0] * 3).fill(1), 3);
+    this.halo.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.halo.count = 0; this.halo.frustumCulled = false; this.halo.renderOrder = 1;
+    scene.add(this.halo);
     this.combo = 0; this.comboT = 0;
   }
 
-  reset() { for (const p of this.pools) p.n = 0; for (const m of this.meshes) m.count = 0; }
+  reset() { for (const p of this.pools) p.n = 0; for (const m of this.meshes) m.count = 0; this.halo.count = 0; }
 
   _add(ki, x, y, z, val, burst = 3) {
     const p = this.pools[ki];
@@ -53,8 +60,10 @@ export class Pickups {
     this.comboT -= dt; if (this.comboT <= 0) this.combo = 0;
     for (let ki = 0; ki < 3; ki++) {
       const p = this.pools[ki], mesh = this.meshes[ki], te = mesh.instanceMatrix.array, cl = mesh.instanceColor.array;
+      const ht = this.halo.instanceMatrix.array, hc = this.halo.instanceColor.array;
       let i = 0;
       while (i < p.n) {
+        let gy = NaN;
         p.age[i] += dt;
         const dx = P.x - p.x[i], dy = (P.y + 0.8) - p.y[i], dz = P.z - p.z[i];
         const d2 = dx * dx + dz * dz;
@@ -74,6 +83,7 @@ export class Pickups {
         } else {
           // settle on the ground after the pop
           const gh = w.heightAt(p.x[i], p.z[i]) + 0.45;
+          gy = gh - 0.36;
           if (p.y[i] > gh || p.vy[i] > 0) {
             p.vy[i] -= 22 * dt;
             p.x[i] += p.vx[i] * dt; p.y[i] += p.vy[i] * dt; p.z[i] += p.vz[i] * dt;
@@ -82,7 +92,7 @@ export class Pickups {
         }
         // render
         const v = p.val[i];
-        const s = ki === 0 ? (v < 2 ? 0.9 : v < 5 ? 1.1 : v < 20 ? 1.35 : 1.8) : 1;
+        const s = ki === 0 ? (v < 2 ? 1.3 : v < 5 ? 1.5 : v < 20 ? 1.75 : 2.2) : 1;
         const rot = t * (ki === 1 ? 3 : 1.6) + i;
         const c = Math.cos(rot) * s, sn = Math.sin(rot) * s;
         const bob = Math.sin(t * 3 + i) * 0.12;
@@ -93,13 +103,23 @@ export class Pickups {
         te[o + 12] = p.x[i]; te[o + 13] = p.y[i] + bob; te[o + 14] = p.z[i]; te[o + 15] = 1;
         if (ki === 0) {
           const gc = GEM_COLORS[v < 2 ? 0 : v < 5 ? 1 : v < 20 ? 2 : 3];
-          cl[i * 3] = gc.r * 1.6; cl[i * 3 + 1] = gc.g * 1.6; cl[i * 3 + 2] = gc.b * 1.6;
+          cl[i * 3] = gc.r * 2.2; cl[i * 3 + 1] = gc.g * 2.2; cl[i * 3 + 2] = gc.b * 2.2;
+          // halo: pulses, hidden while the gem is flying to you
+          const hs = gy === gy ? s * (1 + 0.18 * Math.sin(t * 4 + i)) : 0;
+          ht[o] = hs; ht[o + 1] = 0; ht[o + 2] = 0; ht[o + 3] = 0;
+          ht[o + 4] = 0; ht[o + 5] = hs ? 1 : 0; ht[o + 6] = 0; ht[o + 7] = 0;
+          ht[o + 8] = 0; ht[o + 9] = 0; ht[o + 10] = hs; ht[o + 11] = 0;
+          ht[o + 12] = p.x[i]; ht[o + 13] = hs ? gy : -999; ht[o + 14] = p.z[i]; ht[o + 15] = 1;
+          hc[i * 3] = gc.r * 0.9; hc[i * 3 + 1] = gc.g * 0.9; hc[i * 3 + 2] = gc.b * 0.9;
         }
         i++;
       }
       mesh.count = p.n;
       mesh.instanceMatrix.needsUpdate = true;
-      if (ki === 0) mesh.instanceColor.needsUpdate = true;
+      if (ki === 0) {
+        mesh.instanceColor.needsUpdate = true;
+        this.halo.count = p.n; this.halo.instanceMatrix.needsUpdate = true; this.halo.instanceColor.needsUpdate = true;
+      }
     }
   }
 

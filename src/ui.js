@@ -50,7 +50,7 @@ const WEAPON_NAMES = {
 const KIND_LABEL = { weapon: 'WEAPON', tome: 'CHARM', charm: 'CHARM', character: 'RAPTOR', island: 'ISLAND', shrine: 'SHRINE', perk: 'PERK', stat: 'MUTATION', boon: 'BOON', bonus: 'BONUS' };
 const CAT_ICON = { ISLANDS: 'cannon', MOVEMENT: 'zoomies', COMBAT: 'challenge', EXPLORATION: 'quest' };
 const CAT_ORDER = ['ISLANDS', 'MOVEMENT', 'COMBAT', 'EXPLORATION'];
-const DEFAULT_SETTINGS = { master: 0.8, music: 0.6, sfx: 0.8, sensitivity: 1, invertY: false, quality: 'high', showFps: false };
+const DEFAULT_SETTINGS = { master: 0.8, music: 0.6, sfx: 0.8, sensitivity: 1, invertY: false, quality: 'high', showFps: false, fxOpacity: 1 };
 const SEGS = 24; // momentum meter segments
 const MM_RANGE = 90; // metres shown from player to minimap edge
 const TAU = Math.PI * 2;
@@ -710,10 +710,10 @@ const TEMPLATE = `
       <div class="vb-mom-panel">
         <div class="vb-mom-top">
           <span class="vb-mom-kmh" data-r="kmh">0</span><span class="vb-mom-unit">KM/H</span>
-          <span class="vb-mom-lab">MOMENTUM</span>
+          <span class="vb-mom-lab" data-r="momLab">MOMENTUM</span>
         </div>
         <div class="vb-mom-segs" data-r="segs"></div>
-        <div class="vb-mom-track"><div class="vb-mom-tfill" data-r="momFill"></div><i class="r" style="left:20%"></i><i style="left:60%"></i></div>
+        <div class="vb-mom-track"><div class="vb-mom-tfill" data-r="momFill"></div><i class="r" style="left:20%"></i><i style="left:60%"></i><i class="cap" data-r="momCap"></i></div>
       </div>
       <div class="vb-mom-mult" data-r="multWrap"><span class="vb-mom-x vb-ot" data-t="×">×</span><span class="vb-mom-n vb-ot" data-r="mult" data-t="1.0">1.0</span></div>
       <div class="vb-mom-ram" data-r="ramBadge">${BASE_ICONS.fire}<span>RAM!</span></div>
@@ -1183,6 +1183,7 @@ export class UI {
     range('music', 'MUSIC', 0, 1, 0.01, pct);
     range('sfx', 'SFX', 0, 1, 0.01, pct);
     range('sensitivity', 'MOUSE SENS', 0.2, 3, 0.05, (v) => v.toFixed(2) + '×');
+    range('fxOpacity', 'ATTACK FX', 0.1, 1, 0.05, pct);
     toggle('invertY', 'INVERT Y');
     seg('quality', 'GRAPHICS', [
       ['high', 'HIGH'],
@@ -1198,7 +1199,7 @@ export class UI {
   _mergeSettings(s) {
     const S = this.settings;
     if (s && typeof s === 'object') for (const k of Object.keys(DEFAULT_SETTINGS)) if (s[k] != null) S[k] = s[k];
-    for (const k of ['master', 'music', 'sfx', 'sensitivity']) if (!(+S[k] >= 0)) S[k] = DEFAULT_SETTINGS[k];
+    for (const k of ['master', 'music', 'sfx', 'sensitivity', 'fxOpacity']) if (!(+S[k] >= 0)) S[k] = DEFAULT_SETTINGS[k];
     S.quality = /^l/i.test(String(S.quality)) ? 'low' : 'high';
     S.invertY = !!S.invertY;
     S.showFps = !!S.showFps;
@@ -1818,6 +1819,13 @@ export class UI {
       setOT(r.mult, (m10 / 10).toFixed(1));
       r.momFill.style.transform = 'scaleX(' + clamp01((m10 / 10 - 1) / 5).toFixed(3) + ')';
       L.m10 = m10;
+    }
+    const cap10 = Math.round((s.momCap || 8) * 10);
+    if (cap10 !== L.cap10) {
+      r.momCap.style.left = Math.min(100, ((cap10 / 10 - 1) / 5) * 100).toFixed(1) + '%';
+      r.momCap.style.display = cap10 >= 60 ? 'none' : '';
+      r.momLab.textContent = cap10 >= 80 ? 'MOMENTUM' : `MAX ×${(cap10 / 10).toFixed(1)}`;
+      L.cap10 = cap10;
     }
     const tier = tierOf(m10 / 10);
     if (tier !== L.tier) {

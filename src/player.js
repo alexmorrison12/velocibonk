@@ -146,10 +146,10 @@ export class Player {
         v.y = Math.max(v.y, 0) * 0.3 + jv;
         if (bhop && hs > runMax * 0.8) {
           this.bhopChain++;
-          // additive gain that fades out toward ~26 m/s: bhopping alone gets you to RAM speed,
+          // additive gain that fades out toward ~24 m/s: a long clean bhop chain gets you to RAM speed,
           // going beyond that takes slopes, slams and pads
-          const cap = 26 * Math.sqrt(stats.moveSpeed);
-          const gain = Math.max(0, cap - hs) * (0.07 + Math.min(this.bhopChain, 10) * 0.004);
+          const cap = 24 * Math.sqrt(stats.moveSpeed);
+          const gain = Math.max(0, cap - hs) * (0.04 + Math.min(this.bhopChain, 12) * 0.0035);
           if (gain > 0) { const k = (hs + gain) / hs; v.x *= k; v.z *= k; }
           this.emit('bhop', this.bhopChain);
         }

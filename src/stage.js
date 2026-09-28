@@ -14,7 +14,20 @@ export function resetStage(g) {
   g.islandTime = 0; g.nextElite = 40; g.nextHorde = 70; g.miniIdx = 0; g.miniWarned = -1;
   g.finalBoss = null; g.finalSpawned = false; g.swarm = false; g.swarmLevel = 0; g.swarmT = 0; g.swarmSpeed = 1;
   g.cleared = false; g.greedActive = false; g.trial = null; g.lavaT = 0;
-  g.hpMult = 1; g.dmgMult = 1;
+  stageMults(g);
+}
+
+// enemy HP / damage scaling. Each island starts at least a bit tougher than the last one ended
+// (g.hpCarry, set when an island is cleared), so a carried-over build never lands on a pushover island.
+export function stageMults(g) {
+  const k = g.islandN - 1, t = g.islandTime || 0;
+  const min = (t + k * 200) / 60;
+  const base = Math.max((1.25 + min * 0.6 + min * min * 0.08) * Math.pow(1.75, k), (g.hpCarry || 0) * 1.15);
+  g.hpBase = base;
+  g.hpMult = base * (g.greedActive ? 1.3 : 1) * (g.swarm ? 1 + g.swarmLevel * 0.12 : 1);
+  g.dmgMult = (1 + min * 0.11) * Math.pow(1.08, k) * (g.swarm ? 1 + g.swarmLevel * 0.1 : 1);
+  // bosses hit hard but must never one-shot a healthy build
+  g.bossDmg = 1 + k * 0.35 + (t / 60) * 0.06;
 }
 
 export function stageTimeLeft(g) { return Math.max(0, ISLAND_TIME - g.islandTime); }
@@ -36,12 +49,7 @@ export function updateDirector(g, dt) {
   if (g.cleared) return;
   g.islandTime += dt;
   const t = g.islandTime;
-  const tEff = t + k * 200;
-  const min = tEff / 60;
-  g.hpMult = (1 + min * 0.55 + min * min * 0.075) * Math.pow(1.75, k) * (g.greedActive ? 1.3 : 1) * (g.swarm ? 1 + g.swarmLevel * 0.12 : 1);
-  g.dmgMult = (1 + min * 0.11) * Math.pow(1.08, k) * (g.swarm ? 1 + g.swarmLevel * 0.1 : 1);
-  // bosses hit hard but must never one-shot a healthy build
-  g.bossDmg = 1 + k * 0.35 + (t / 60) * 0.06;
+  stageMults(g);
 
   const boss = g.finalBoss && g.finalBoss.alive;
   let target = (26 + t * 0.9 + (t / 60) ** 2 * 10) * (1 + 0.15 * k) * (g.greedActive ? 1.4 : 1);
@@ -294,6 +302,16 @@ export function updateTrial(g, dt) {
   const tr = g.trial;
   if (!tr) return;
   tr.time -= dt;
+  // keep the trial fed: there are always enough enemies close by to finish it
+  tr.feedT = (tr.feedT || 0) - dt;
+  if (tr.feedT <= 0 && tr.kills < tr.goal) {
+    tr.feedT = 0.4;
+    const E = g.enemies, P = g.player.pos;
+    let near = 0;
+    for (let q = 0; q < E.activeCount; q++) { const j = E.active[q]; if (E.state[j] === 1 && (E.x[j] - P.x) ** 2 + (E.z[j] - P.z) ** 2 < 28 * 28) near++; }
+    const want = Math.min(60, tr.goal - tr.kills + 14);
+    for (let q = 0; q < Math.min(12, want - near); q++) spawnAround(g, Math.random() < 0.12 ? T.brute : Math.random() < 0.5 ? T.goon : T.blob, 15, 24);
+  }
   if (tr.kills >= tr.goal) {
     g.trial = null; tr.shrine.active = false;
     g.progress.lifeAdd('lifeTrials');

@@ -119,7 +119,23 @@ export class Arsenal {
     return this.game.enemies.damage(i, d, crit, dirX, dirZ, knock, w.id);
   }
 
+  // settings → ATTACK FX: fades projectiles, fields and the effects weapons spawn (enemy telegraphs stay full)
+  setOpacity(k) {
+    this.alpha = k;
+    for (const m of [this.pebMesh, this.banMesh, this.sawMesh, this.metMesh]) {
+      const tr = k < 0.999;
+      if (m.material.transparent !== tr) { m.material.transparent = tr; m.material.needsUpdate = true; }
+      m.material.opacity = k; m.material.depthWrite = !tr;
+    }
+  }
+
   update(dt, t) {
+    const fx = this.game.fx;
+    fx.tint = this.alpha ?? 1;
+    try { this._update(dt, t); } finally { fx.tint = 1; }
+  }
+
+  _update(dt, t) {
     const g = this.game, E = g.enemies, P = g.player.pos, s = g.stats;
     const haste = s.haste;
     for (const w of this.list) {
@@ -338,7 +354,7 @@ export class Arsenal {
     const g = this.game, E = g.enemies, P = g.player.pos;
     const st = weaponStats('aura', w.level, g.stats);
     m.visible = true; m.position.set(P.x, P.y + 0.25, P.z); m.scale.setScalar(st.r); m.rotation.y = t * 0.8;
-    m.material.opacity = 0.55 + Math.sin(t * 5) * 0.1;
+    m.material.opacity = (0.55 + Math.sin(t * 5) * 0.1) * (this.alpha ?? 1);
     this.auraT -= dt;
     if (this.auraT > 0) return;
     this.auraT = 0.3 / g.stats.haste;

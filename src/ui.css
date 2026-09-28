@@ -585,6 +585,7 @@
 .vb-mom-tfill { position: absolute; inset: 0; transform-origin: 0 50%; transform: scaleX(0); background: var(--mc); transition: transform 0.15s ease-out; will-change: transform; }
 .vb-mom-track i { position: absolute; top: 0; bottom: 0; width: 0.18em; background: var(--ink); }
 .vb-mom-track i.r { background: var(--hot); width: 0.24em; }
+.vb-mom-track i.cap { width: 0.3em; background: var(--paper); box-shadow: 0 0 0.4em var(--paper); }
 .vb-mom-mult {
   position: relative;
   z-index: 2;

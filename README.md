@@ -37,12 +37,13 @@ A run hops across up to five islands, each a different biome with its own terrai
 
 ## Features
 
-- **Momentum combat.** Bunny-hopping, downhill slides, launches off hill crests, jump and boost pads, and ground-slams all raise a ×1–×8 damage and score multiplier. Slams are crowd control: bosses shrug off most of their damage.
+- **Momentum combat.** Bunny-hopping, downhill slides, launches off hill crests, jump and boost pads, and ground-slams all raise a damage and score multiplier. It builds up over a second of sustained speed, and its ceiling starts at ×2.4 and rises to ×8 as you level up and take Momentum Charms. Slams are crowd control: bosses shrug off most of their damage.
 - **Build crafting.** 12 auto-weapons, including Frost Nova and Black Hole. 14 stat charms, rarity-rolled upgrade cards, chests and elite enemies.
 - **Daily island chain.** Everyone gets the same seeded five-island chain each day.
 - **Global leaderboard.** A daily top 10 and an all-time board on the title screen. Hit **BEAT IT** on any row to play that run's islands with its score as your target.
 - **Challenge links** and **ghost racing** against your own best run.
 - **Hordes.** 1,500+ enemies on screen, animated on the GPU with instanced meshes.
+- **Readable chaos.** XP gems glow and sit on light rings, beating an island's final boss pulls every gem on the map to you, and the ATTACK FX setting fades your own weapon effects so enemies stay visible.
 - **Fully procedural.** Every model, texture, sound effect and song is generated in code at load time. The whole game ships as a single ~1 MB HTML file.
 
 ## Controls
